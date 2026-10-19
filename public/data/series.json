@@ -1,0 +1,86 @@
+{
+  "startDate": "2026-10-05",
+  "timezone": "America/Los_Angeles",
+  "days": 28,
+  "source": "https://x.com/thsottiaux/status/2106845241357824205",
+  "posts": [
+    {
+      "id": "2107158998495748264",
+      "at": "2026-10-05T17:20:29.000Z",
+      "en": "Day 1/ We have optimized the default speed to be ~50% faster across GPT-6 Astra and GPT-6.1 Sol through the subscription…",
+      "zh": "订阅内 GPT-6 Astra 和 GPT-6.1 Sol 的默认速度提升约 50%，覆盖我们所有产品，以及使用 Sign in With ChatGPT 的合作伙伴（OpenCode、Pi、Amp、Devin 等）。无需任何操作。"
+    },
+    {
+      "id": "2107575657014468879",
+      "at": "2026-10-06T20:56:08.000Z",
+      "en": "Roundup of Day 2/ 2.1/ Approve for me (auto-review) is now included and does not use usage. Can be between 2-10% of plan…",
+      "zh": "2.1/ “Approve for me”（自动审核）现已包含在内，不消耗额度——用到时相当于套餐的 2–10%。2.2/ 面向开发者的简化版 API。2.3/ 会议记录已集成。2.4/ 面向开发者的 Decisions API 已上线。"
+    },
+    {
+      "id": "2107913674593644711",
+      "at": "2026-10-07T19:19:17.000Z",
+      "en": "Day 3/ The big one is GPT-6 in Chat, but today is also a little celebration day with a new high of 40M active users…",
+      "zh": "重头戏是 Chat 里的 GPT-6；今天也是个小小的庆祝日：Codex 和 ChatGPT Work 的活跃用户创下 40M 新高。正在给所有付费账户发放一次存储重置。"
+    },
+    {
+      "id": "2108275041276420573",
+      "at": "2026-10-08T19:15:14.000Z",
+      "en": "Day 4/ We have improved steering to be instant, leading to the model now reacting much faster to adjustments you make…",
+      "zh": "引导（steering）现在即时生效，模型对你中途的调整反应快了很多…"
+    },
+    {
+      "id": "2108645667451318747",
+      "at": "2026-10-09T19:47:58.000Z",
+      "en": "Day 5/ Composer predictions in the desktop app. Often leads to a double take with how on point they are.",
+      "zh": "桌面应用的输入框预测（Composer predictions）：猜得很准，常让人忍不住多看一眼。Pro 套餐自带，不消耗额度。"
+    },
+    {
+      "id": "2109045220411351517",
+      "at": "2026-10-10T22:15:39.000Z",
+      "en": "Day 6/ Reset",
+      "zh": "重置"
+    },
+    {
+      "id": "2109430343346581527",
+      "at": "2026-10-11T23:45:59.000Z",
+      "en": "Day 7/ We have increased default context length for GPT-6.1 Sol to 500k when used through Codex & Work, up from 272k or an ~ 80% increase.",
+      "zh": "通过 Codex 和 Work 使用 GPT-6.1 Sol 时，默认上下文长度从 272k 提高到 500k，约增加 80%。"
+    },
+    {
+      "id": "2109812216212099456",
+      "at": "2026-10-13T01:03:25.000Z",
+      "en": "Day 8/ Reset",
+      "zh": "重置"
+    },
+    {
+      "id": "2110151780478927344",
+      "at": "2026-10-13T23:32:43.000Z",
+      "en": "Day 9/ We've rolled out optimizations to how we store state on disk for the chatgpt &amp; codex desktop app that should reduce…",
+      "zh": "我们对 chatgpt &amp; codex 桌面应用在磁盘上存储状态的方式进行了优化，这应该能减少 60% 的磁盘占用量。虽然这是一个小改进，但我们收到了很多关于高级用户磁盘空间不足的反馈。"
+    },
+    {
+      "id": "2110595484180214059",
+      "at": "2026-10-15T04:55:51.000Z",
+      "en": "Day 10/ Reset",
+      "zh": "重置"
+    },
+    {
+      "id": "2110750421367287996",
+      "at": "2026-10-15T15:11:30.000Z",
+      "en": "Day 11/ We've landed a series of changes and more compute to very significantly decrease the occurrence of the disruptive…",
+      "zh": "我们实施了一系列更改并增加了更多算力，以显著减少“Selected model is at capacity. Please try a different model（所选模型已满负荷，请尝试其…"
+    },
+    {
+      "id": "2111244596131111253",
+      "at": "2026-10-16T23:55:11.000Z",
+      "en": "Day 12/ We’ve made improvements to Codex &amp; Work that increase the effective usage you get. We achieved this by reusing…",
+      "zh": "我们对 Codex 和 Work 进行了改进，以提高您的有效使用率。我们通过在子代理之间重用上下文、延长上下文缓存时间以及改进请求路由（从而提高缓存命中率）实现了这一点。"
+    },
+    {
+      "id": "2111492673890824348",
+      "at": "2026-10-17T16:20:57.000Z",
+      "en": "Day 13/ Le limit reset",
+      "zh": "限制已重置"
+    }
+  ]
+}

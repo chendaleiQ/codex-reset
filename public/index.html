@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codex 重置 — 上次重置追踪与实时预测</title>
+<meta name="description" content="Codex 今天会重置吗？查看最近一次已验证的额度重置、24 与 48 小时预测、官方信号与 OpenAI 服务状态。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#101a3d">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/hanken-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/shell.css">
+<link rel="stylesheet" href="/css/components.css">
+<link rel="stylesheet" href="/css/pages.css">
+<link rel="stylesheet" href="/css/home.css">
+</head>
+<body>
+<a class="skip-link" href="#main" id="skip">跳到主要内容</a>
+
+<div class="app">
+    <header class="masthead">
+    <div class="masthead-inner">
+    <a class="wordmark" href="/" aria-label="Codex 重置 — 概况">
+      <span class="wordmark-mark" aria-hidden="true"></span>
+      <span class="wordmark-text">Codex Reset</span>
+      <span class="wordmark-sub" id="wordmark-sub">已验证的重置记录</span>
+    </a>
+    <nav class="masthead-nav" id="primary-nav" aria-label="版块"></nav>
+    <div class="masthead-tools">
+      <p class="masthead-clock" id="masthead-clock"></p>
+      <a class="status-chip" id="status-chip" href="/status" data-tone="dim">
+        <span class="status-chip-mark" aria-hidden="true"></span>
+        <span class="status-chip-text">—</span>
+      </a>
+      <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false"></button>
+      <div class="locale">
+        <button type="button" class="locale-button" id="locale-button" aria-expanded="false" aria-haspopup="listbox">
+          <span id="locale-label">中文</span>
+          <svg class="glyph" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+        <ul class="locale-menu" id="locale-menu" role="listbox" aria-label="语言" hidden></ul>
+      </div>
+    </div>
+    </div>
+  </header>
+
+  <main class="page" id="main" tabindex="-1"></main>
+
+  <footer class="colophon">
+    <div class="colophon-inner">
+    <p class="colophon-mark">Codex Reset</p>
+    <p class="colophon-note" id="colophon-note">非官方项目，与 OpenAI 无关。数值仅供参考。</p>
+    <nav class="colophon-links" aria-label="页脚">
+      <a href="/timeline" data-i18n="nav.timeline">重置记录</a>
+      <a href="/status" data-i18n="nav.status">服务状态</a>
+      <a href="/vigil" data-i18n="nav.vigil">一起等重置</a>
+      <a href="https://status.openai.com/" rel="noopener nofollow" target="_blank">OpenAI Status</a>
+      <a href="https://x.com/thsottiaux" rel="noopener nofollow" target="_blank">@thsottiaux</a>
+    </nav>
+    <p class="colophon-source"><span data-i18n="footer.data">数据来源：Codex Reset 公开记录</span> · <span id="colophon-updated">—</span></p>
+    </div>
+  </footer>
+
+  <p class="sr-only" aria-live="polite" id="announcer"></p>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

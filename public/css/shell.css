@@ -1,0 +1,473 @@
+/* ============================================================================
+   Shell — masthead, page, colophon. One column; the diagram owns the width.
+   ========================================================================= */
+
+.app {
+  display: grid;
+  /* One explicit track that can shrink to zero: no child may widen the page. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 100dvh;
+}
+
+/* --- masthead ------------------------------------------------------------ */
+
+.masthead {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  border-bottom: 1px solid var(--hair);
+  background: var(--masthead);
+  backdrop-filter: saturate(140%) blur(12px);
+}
+
+/* The masthead, the page and the colophon all share one left edge. */
+.masthead-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--s5);
+  height: 72px;
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 0 var(--s6);
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 6px 0;
+  text-decoration: none;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.wordmark-mark {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 7px;
+  background: var(--reversed-bg);
+}
+
+/* The mark is the route at icon size: one line, one stop, one future. */
+.wordmark-mark::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 12px;
+  height: 2px;
+  background: var(--reversed-ink);
+  opacity: 0.45;
+}
+
+.wordmark-mark::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 9px;
+  width: 10px;
+  height: 8px;
+  border-radius: 1px;
+  background: var(--line-cobalt);
+  box-shadow: 0 0 0 2px var(--reversed-bg);
+}
+
+.wordmark-text {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+.wordmark-sub {
+  display: none;
+}
+
+.masthead-nav {
+  display: flex;
+  gap: 2px;
+  margin-left: var(--s4);
+}
+
+.masthead-nav a {
+  position: relative;
+  padding: 8px 13px;
+  border-radius: 7px;
+  font-size: var(--t-ui);
+  font-weight: 600;
+  color: var(--ink-2);
+  text-decoration: none;
+  transition: background-color 130ms var(--ease), color 130ms var(--ease);
+}
+
+.masthead-nav a:hover {
+  background: var(--wash);
+  color: var(--ink);
+}
+
+.masthead-nav a[aria-current='page'] {
+  background: color-mix(in srgb, var(--line-cobalt) 14%, transparent);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.masthead-nav a[aria-current='page']::after {
+  content: '';
+  position: absolute;
+  left: 13px;
+  right: 13px;
+  bottom: 5px;
+  height: 2px;
+  background: var(--line-cobalt);
+}
+
+.masthead-tools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* One line of clock context replaces the old hour column. */
+.masthead-clock {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding-right: var(--s4);
+  border-right: 1px solid var(--hair);
+  font-size: var(--t-meta);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.masthead-clock b {
+  color: var(--ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 8px 11px;
+  border: 1px solid var(--hair-strong);
+  border-radius: 7px;
+  font-size: var(--t-meta);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+  max-width: 24ch;
+  transition: border-color 130ms var(--ease);
+}
+
+.status-chip-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-chip:hover {
+  border-color: var(--ink-3);
+}
+
+.status-chip-mark {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 2px;
+  background: var(--tone, var(--idle));
+}
+
+.status-chip[data-tone='ok'] {
+  --tone: var(--ok);
+}
+.status-chip[data-tone='warn'] {
+  --tone: var(--warn);
+}
+.status-chip[data-tone='bad'] {
+  --tone: var(--bad);
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--hair-strong);
+  border-radius: 7px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: border-color 130ms var(--ease), color 130ms var(--ease);
+}
+
+.theme-toggle:hover {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+
+.locale {
+  position: relative;
+}
+
+.locale-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px solid var(--hair-strong);
+  border-radius: 7px;
+  color: var(--ink-2);
+  font-size: var(--t-meta);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.locale-button:hover {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+
+.locale-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 20;
+  min-width: 148px;
+  padding: 5px;
+  background: var(--surface-raised);
+  border: 1px solid var(--hair-strong);
+  border-radius: 4px;
+  box-shadow: var(--lift);
+}
+
+.locale-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: 0;
+  border-radius: 2px;
+  text-align: left;
+  color: var(--ink-2);
+  font-size: var(--t-ui);
+  cursor: pointer;
+}
+
+.locale-menu button:hover,
+.locale-menu [aria-selected='true'] button {
+  background: color-mix(in srgb, var(--line-cobalt) 14%, transparent);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* --- page ---------------------------------------------------------------- */
+
+.page {
+  padding: var(--s6) var(--s6) var(--s8);
+  max-width: var(--page-max);
+  width: 100%;
+  margin: 0 auto;
+}
+
+.page-enter {
+  animation: page-in 460ms var(--ease) both;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s5);
+  flex-wrap: wrap;
+  margin-bottom: var(--s7);
+}
+
+.page-head h1 {
+  margin-right: auto;
+}
+
+/* --- colophon ------------------------------------------------------------ */
+
+.colophon {
+  margin-top: auto;
+  border-top: 1px solid var(--hair);
+  background: var(--ground-sunk);
+}
+
+.colophon-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s4) var(--s6);
+  align-items: baseline;
+  padding: var(--s7) var(--s6);
+  max-width: var(--page-max);
+  margin: 0 auto;
+}
+
+.colophon-mark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: var(--t-meta);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-2);
+  max-width: none;
+}
+
+.colophon-mark::before {
+  content: '';
+  width: 22px;
+  height: var(--line-weight);
+  border-radius: 1px;
+  background: var(--line-cobalt);
+}
+
+.colophon-note {
+  font-size: var(--t-ui);
+  color: var(--ink-3);
+  max-width: 60ch;
+}
+
+.colophon-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s5);
+  font-size: var(--t-meta);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  justify-content: flex-end;
+}
+
+.colophon-links a {
+  color: var(--ink-3);
+  text-decoration: none;
+}
+
+.colophon-links a:hover {
+  color: var(--ink);
+}
+
+.colophon-source {
+  grid-column: 1 / -1;
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--hair);
+  font-size: var(--t-meta);
+  color: var(--ink-4);
+  max-width: none;
+}
+
+/* --- toast --------------------------------------------------------------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--s7);
+  /* the toast is always the reversed chip */
+  transform: translateX(-50%) translateY(14px);
+  z-index: 50;
+  padding: 12px var(--s5);
+  background: var(--surface-raised);
+  border: 1px solid var(--hair-strong);
+  border-radius: 4px;
+  border-left: 4px solid var(--line-cobalt);
+  box-shadow: var(--lift);
+  font-size: var(--t-ui);
+  font-weight: 600;
+  color: var(--ink);
+  opacity: 0;
+  transition: opacity 180ms var(--ease), transform 180ms var(--ease);
+  max-width: min(92vw, 46ch);
+}
+
+.toast[data-open='true'] {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* --- narrow -------------------------------------------------------------- */
+
+@media (max-width: 1000px) {
+  .masthead-clock {
+    display: none;
+  }
+}
+
+@media (max-width: 800px) {
+  .masthead-inner {
+    height: auto;
+    flex-wrap: wrap;
+    gap: var(--s3);
+    padding: var(--s3) var(--s4);
+  }
+
+  .masthead-nav {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    gap: var(--s1);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .masthead-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .masthead-nav a {
+    padding: 8px 11px;
+  }
+
+  .masthead-tools {
+    margin-left: auto;
+  }
+
+  .page {
+    padding: var(--s5) var(--s4) var(--s7);
+  }
+
+  .colophon-inner {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--s6) var(--s4);
+  }
+
+  .colophon-links {
+    justify-content: flex-start;
+  }
+}
+
+/* The main landmark receives programmatic navigation focus. */
+.page:focus { box-shadow: none; }
+@media (max-width: 600px) {
+  .masthead-tools { gap: 8px; }
+  .status-chip { display: none; }
+  .masthead-nav a { min-height: 40px; display: inline-flex; align-items: center; }
+  .theme-toggle, .locale-button { min-height: 40px; }
+  .theme-toggle { width: 40px; }
+}

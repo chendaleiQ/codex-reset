@@ -1,0 +1,170 @@
+/* ============================================================================
+   Codex Reset — tokens
+
+   The world: a metropolitan rail diagram. Signage ships in two materials and
+   so does this: a printed panel (light, the default) and a backlit panel
+   (dark, by choice). Both keep the same system — line identity, station ticks,
+   the timetable grid — and differ only in ground, surface and ink.
+
+   Colour is the network here, not decoration. Identity colours never carry
+   state; state colours never carry identity.
+   ========================================================================= */
+
+:root {
+  color-scheme: light;
+
+  /* --- ground and surface ------------------------------------------------ */
+  --ground: #f5f6f8; /* the page: a cool signage grey, not paper cream */
+  --ground-sunk: #eff1f4; /* the footer */
+  --surface: #ffffff; /* the board */
+  --surface-top: #ffffff; /* the board's top stop in its gradient */
+  --surface-raised: #ffffff; /* menus and toasts */
+  --masthead: rgba(255, 255, 255, 0.88);
+  --wash: rgba(18, 22, 31, 0.05); /* subtle fills: hover, tracks, wells */
+
+  /* --- ink --------------------------------------------------------------- */
+  --ink: #12161f;
+  --ink-2: rgba(18, 22, 31, 0.86);
+  --ink-3: rgba(18, 22, 31, 0.72);
+  --ink-4: rgba(18, 22, 31, 0.62);
+  --hair: rgba(18, 22, 31, 0.13);
+  --hair-strong: rgba(18, 22, 31, 0.28);
+  --line-ink: #12161f;
+
+  /* --- the line palette: identity, never state --------------------------- */
+  --line-cobalt: #1b5fd9;
+  --line-green: #1c8650;
+  --line-amber: #c07d0a;
+  --line-violet: #6f42c9;
+  --line-teal: #0a726d;
+  --line-magenta: #c02a7d;
+
+  /* --- state colours: service condition only ----------------------------- */
+  --ok: #1c8650;
+  --ok-text: #146b3d;
+  --warn: #c07d0a;
+  --warn-text: #8a5900;
+  --bad: #d92d20;
+  --bad-text: #b42318;
+  --idle: rgba(18, 22, 31, 0.42);
+  --hatch: rgba(255, 255, 255, 0.6); /* the gap struck through an unhealthy line */
+
+  /* --- emphasis: reversed chips and the one filled control --------------- */
+  --reversed-bg: #12161f;
+  --reversed-ink: #ffffff;
+  --button-bg: rgba(18, 22, 31, 0.05);
+
+  /* --- fills: a day of the 28-day run, and the ink that reads on it ------- */
+  --fill-reset: #146b3d;
+  --fill-banked: #a01f62;
+  --fill-improve: #1857c9;
+  --on-fill: #ffffff;
+
+  /* --- depth: one soft lift for anything that floats --------------------- */
+  --lift: 0 1px 2px rgba(18, 22, 31, 0.05), 0 24px 48px -32px rgba(18, 22, 31, 0.45);
+  --board-edge: rgba(18, 22, 31, 0.16);
+
+  /* --- type: one signage grotesque, seven roles -------------------------- */
+  --font-ui: 'Hanken Grotesk', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Microsoft YaHei',
+    system-ui, sans-serif;
+
+  --t-meta: 0.75rem; /* 12px 600 uppercase labels, table heads, timestamps */
+  --t-ui: 0.875rem; /* 14px controls, table cells, list rows             */
+  --t-body: 1rem; /* 16px every sentence meant to be read               */
+  --t-lead: 1.125rem; /* 18px the one intro paragraph per page              */
+  --t-title: 1.5rem; /* 24px a section heading, sentence case              */
+  --t-num: 1.25rem; /* 20px a fact value, a subordinate figure            */
+  --t-figure: 1.75rem; /* 28px the headline number                           */
+  --t-display: 2.375rem; /* 38px the page title, once per page               */
+
+  --track-label: 0.03em;
+  --track-title: -0.018em;
+
+  /* --- space: the signage rhythm, 4 → 96 --------------------------------- */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
+  --s9: 96px;
+
+  --measure: 62ch;
+  --page-max: 1280px;
+  --rail: 0px;
+
+  /* --- the diagram -------------------------------------------------------- */
+  --line-weight: 8px;
+  --station: 3px;
+  --bloom: 15px;
+
+  /* --- motion: one curve, one authored moment ---------------------------- */
+  --ease: cubic-bezier(0.2, 0.9, 0.15, 1);
+  --travel: 700ms;
+
+  --ready: var(--line-cobalt); /* the one readable link/accent colour */
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--line-cobalt);
+}
+
+/* --- backlit panel: the same system, read at night ----------------------- */
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --ground: #101114; /* neutral graphite, deliberately not navy */
+  --ground-sunk: #0a0b0d;
+  --surface: #191b20;
+  --surface-top: #1e2027;
+  --surface-raised: #23262d;
+  --masthead: rgba(16, 17, 20, 0.88);
+  --wash: rgba(244, 245, 247, 0.06);
+
+  --ink: #f4f5f7;
+  --ink-2: rgba(244, 245, 247, 0.84);
+  --ink-3: rgba(244, 245, 247, 0.7);
+  --ink-4: rgba(244, 245, 247, 0.58);
+  --hair: rgba(244, 245, 247, 0.14);
+  --hair-strong: rgba(244, 245, 247, 0.3);
+  --line-ink: #f4f5f7;
+
+  --line-cobalt: #5b93ff;
+  --line-green: #45b877;
+  --line-amber: #e8a33b;
+  --line-violet: #a184ea;
+  --line-teal: #35bdb4;
+  --line-magenta: #e5629f;
+
+  --ok: #45b877;
+  --ok-text: #63ca93;
+  --warn: #e8a33b;
+  --warn-text: #eab965;
+  --bad: #ef4a3d;
+  --bad-text: #f48075;
+  --idle: rgba(244, 245, 247, 0.42);
+  --hatch: rgba(10, 11, 13, 0.55);
+
+  --reversed-bg: #f4f5f7;
+  --reversed-ink: #101114;
+  --button-bg: rgba(244, 245, 247, 0.07);
+
+  --fill-reset: #45b877;
+  --fill-banked: #e5629f;
+  --fill-improve: #5b93ff;
+  --on-fill: #0a0b0d;
+
+  --lift: 0 1px 0 rgba(244, 245, 247, 0.05) inset, 0 28px 60px -44px #000;
+  --board-edge: rgba(244, 245, 247, 0.14);
+
+  --focus: 0 0 0 2px var(--ground), 0 0 0 4px var(--line-cobalt);
+}
+
+@media (max-width: 900px) {
+  :root {
+    --line-weight: 7px;
+    --page-max: 100%;
+    --t-display: 1.75rem;
+    --t-title: 1.25rem;
+  }
+}
