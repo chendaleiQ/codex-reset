@@ -7,6 +7,7 @@
 import { el, link, safeHref } from '../dom.js';
 import { endpoints } from '../api.js';
 import { statusView, surfaceTone } from '../model.js';
+import { subscribeTimeZone } from '../time-zone.js';
 import { getState, subscribe } from '../store.js';
 import { formatDateTime, formatDays, formatNumber, relativeTime } from '../format.js';
 import { leaf } from './_parts.js';
@@ -193,7 +194,7 @@ export async function render(host, app) {
       paintSurfaces();
     }
   });
-  cleanups.push(unsubscribe);
+  cleanups.push(unsubscribe, subscribeTimeZone(() => { paintIncident(); paintHistory(); }));
 
   try {
     history = await endpoints.statusHistory(RANGE, { locale });

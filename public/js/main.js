@@ -5,9 +5,10 @@
 
 import { $, clear, el, icon, text } from './dom.js';
 import { detectLocale, LOCALE_LABEL, locales, normalizeLocale, translator } from './i18n.js';
-import { formatDateTime } from './format.js';
+import { formatClock, formatDateTime } from './format.js';
 import { getState, setLocale, startStore, subscribe } from './store.js';
 import { statusView } from './model.js';
+import { getTimeZone, getTimeZonePreference, localTimeZone, setTimeZone, subscribeTimeZone, zoneLabel } from './time-zone.js';
 
 /**
  * Overview and reset history are the primary routes. Service status and
@@ -167,6 +168,8 @@ function applyLocale(next) {
   text($('#skip'), app.t('nav.skip'));
   document.querySelectorAll('[data-i18n]').forEach((node) => text(node, app.t(node.dataset.i18n)));
   applyTheme(activeTheme ?? readTheme());
+  renderTimeZoneControl();
+  renderUpdated();
 }
 
 function renderStatusChip() {
@@ -189,20 +192,28 @@ function renderStatusChip() {
 
 let clockSignature = '';
 
-function pad(hour) {
-  return String(hour).padStart(2, '0');
+function renderTimeZoneControl() {
+  const select = $('#timezone-select');
+  if (!select) return;
+  const selected = getTimeZonePreference();
+  const zones = [...new Set(['local', 'Asia/Shanghai', 'America/Los_Angeles', 'UTC', selected])];
+  select.replaceChildren(...zones.map((zone) => el('option', { value: zone },
+    zone === 'local' ? app.t('timezone.local', { zone: zoneLabel(localTimeZone(), app.locale) }) : zoneLabel(zone, app.locale),
+  )));
+  select.value = selected;
 }
 
-/**
- * A local clock provides timezone context without mixing forecast data into
- * navigation controls.
- */
+function renderUpdated() {
+  const updated = app.state.forecast?.updated_at;
+  if (updated) text($('#colophon-updated'), `${app.t('common.updatedAt')} ${formatDateTime(updated, app.locale)}`);
+}
+
 function renderClock() {
   const host = $('#masthead-clock');
   if (!host) return;
   const now = new Date();
-  const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  const signature = `${app.locale}|${time}`;
+  const time = formatClock(now.toISOString(), app.locale);
+  const signature = `${app.locale}|${getTimeZone()}|${time}`;
   if (signature === clockSignature) return;
   clockSignature = signature;
   host.replaceChildren(
@@ -284,6 +295,9 @@ function boot() {
   app.toast = makeToast();
   applyTheme(readTheme());
   $('#theme-toggle')?.addEventListener('click', toggleTheme);
+  $('#timezone-select')?.addEventListener('change', (event) => setTimeZone(event.target.value));
+  subscribeTimeZone(() => { renderTimeZoneControl(); renderClock(); renderUpdated(); });
+  setInterval(() => { if (!document.hidden) renderClock(); }, 30_000);
 
   const fromPath = normalizeLocale((location.pathname.match(/^\/([a-z]{2})(?:-[A-Za-z]+)?\//) || [])[1]);
   const locale = fromPath ?? detectLocale();
@@ -322,10 +336,7 @@ function boot() {
   subscribe((slice) => {
     if (slice === 'status') renderStatusChip();
     if (slice === 'forecast' || slice === 'locale') renderClock();
-    if (slice === 'forecast') {
-      const updated = app.state.forecast?.updated_at;
-      if (updated) text($('#colophon-updated'), `${app.t('common.updatedAt')} ${formatDateTime(updated, app.locale)}`);
-    }
+    if (slice === 'forecast') renderUpdated();
   });
 
   startStore(locale);

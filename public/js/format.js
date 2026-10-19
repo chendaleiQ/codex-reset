@@ -1,4 +1,5 @@
 /** Formatting helpers. Every one of them is total: bad input yields a labelled gap, never "NaN". */
+import { getTimeZone } from './time-zone.js';
 
 const LOCALE_TAG = { zh: 'zh-CN', en: 'en-US', ja: 'ja-JP', es: 'es-ES' };
 
@@ -53,25 +54,26 @@ export function formatDays(days, locale = 'zh') {
   return new Intl.NumberFormat(tag(locale), { maximumFractionDigits: 1, minimumFractionDigits: days < 10 ? 1 : 0 }).format(days);
 }
 
-export function formatDateTime(iso, locale = 'zh', timeZone) {
+export function formatDateTime(iso, locale = 'zh', timeZone = getTimeZone()) {
   const at = parseTime(iso);
   if (at === null) return null;
   return new Intl.DateTimeFormat(tag(locale), {
     month: 'short',
     day: 'numeric',
-    hour: 'numeric',
+    hour: '2-digit',
     minute: '2-digit',
-    ...(timeZone ? { timeZone, timeZoneName: 'short' } : {}),
+    hourCycle: 'h23',
+    timeZone,
   }).format(new Date(at));
 }
 
-export function formatClock(iso, locale = 'zh', timeZone) {
+export function formatClock(iso, locale = 'zh', timeZone = getTimeZone()) {
   const at = parseTime(iso);
   if (at === null) return null;
-  return new Intl.DateTimeFormat(tag(locale), { hour: 'numeric', minute: '2-digit', timeZone }).format(new Date(at));
+  return new Intl.DateTimeFormat(tag(locale), { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone }).format(new Date(at));
 }
 
-export function formatDay(iso, locale = 'zh', timeZone) {
+export function formatDay(iso, locale = 'zh', timeZone = getTimeZone()) {
   const at = parseTime(iso);
   if (at === null) return null;
   return new Intl.DateTimeFormat(tag(locale), { month: 'short', day: 'numeric', timeZone }).format(new Date(at));

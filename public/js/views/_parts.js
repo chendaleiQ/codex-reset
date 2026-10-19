@@ -88,14 +88,14 @@ export function rhythmChart(gaps, { locale, t, readout }) {
           'data-hot': String(hot),
           rx: 1,
         }),
-        svgEl('title', {}, `${formatDay(gap.event.announcedAt, locale) ?? ''} · ${formatDays(gap.days, locale)}d`),
+        svgEl('title', {}, `${formatDay(new Date(gap.at).toISOString(), locale) ?? ''} · ${formatDays(gap.days, locale)}d`),
       );
       const describe = () => {
         if (!readout) return;
         readout.replaceChildren(
           el('strong', {}, `${formatDays(gap.days, locale)} ${locale === 'zh' ? '天' : 'days'}`),
           document.createTextNode(
-            ` — ${formatDay(gap.event.announcedAt, locale) ?? ''} ${locale === 'zh' ? '重置，距上一次' : 'reset, after'} ${formatDays(gap.days, locale)} ${locale === 'zh' ? '天' : 'days'}`,
+            ` — ${formatDay(new Date(gap.at).toISOString(), locale) ?? ''} ${locale === 'zh' ? '重置，距上一次' : 'reset, after'} ${formatDays(gap.days, locale)} ${locale === 'zh' ? '天' : 'days'}`,
           ),
         );
       };

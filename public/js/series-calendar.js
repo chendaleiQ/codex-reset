@@ -1,7 +1,8 @@
 /** One responsive calendar, with persistent selection and an inline day detail. */
 import { el, icon, link, safeXUrl } from './dom.js';
-import { SERIES_KIND } from './series.js';
-import { formatDateTime } from './format.js';
+import { calendarDays, SERIES_KIND } from './series.js';
+import { ACTIVITY_ZONE, zoneLabel } from './time-zone.js';
+import { formatDateTime, formatDay } from './format.js';
 
 const dateOf = (date) => new Date(`${date}T12:00:00Z`);
 const monthOf = (date) => date.slice(0, 7);
@@ -22,21 +23,37 @@ export function createSeriesCalendar(host, { locale, t }) {
   function paintDetail() {
     const row = series.rows.find((entry) => entry.date === selected);
     if (!row) return;
-    const kind = SERIES_KIND[row.kind] ?? SERIES_KIND.waiting;
     detail.dataset.kind = row.kind;
-    const body = locale === 'en' ? row.en || row.zh : row.zh || row.en;
-    const note = locale === 'en' ? row.noteEn || row.note : row.note;
-    detail.replaceChildren(...[
-      el('p', { class: 'detail-eyebrow' }, t('calendar.detail'), el('span', {}, t('series.dayN', { n: row.day }))),
+    detail.replaceChildren(
+      el('p', { class: 'detail-eyebrow' }, t('calendar.detail')),
       el('h3', {}, dayLabel.format(dateOf(row.date))),
-      el('span', { class: 'calendar-badge', dataset: { kind: row.kind } }, t(kind.label)),
-      el('p', { class: 'detail-text' }, body || t(row.kind === 'future' ? 'calendar.futureNote' : 'series.noEntry')),
-      note && note !== body ? el('div', { class: 'detail-note' }, el('strong', {}, t('calendar.verification')), el('p', {}, note)) : null,
-      row.kind === 'banked' ? el('p', { class: 'detail-note' }, t('calendar.bankedNote')) : null,
-      row.kind === 'announced' ? el('p', { class: 'detail-note' }, t('calendar.announcedNote')) : null,
-      row.at ? el('p', { class: 'detail-time' }, icon('clock'), t('calendar.postedAt', { time: formatDateTime(row.at, locale) })) : null,
-      safeXUrl(row.url) ? link(row.url, t('common.viewOnX'), { external: true, className: 'detail-source' }) : null,
-    ].filter(Boolean));
+      el('p', { class: 'detail-zone' }, zoneLabel(series.timeZone, locale, row.entries[0] ? Date.parse(row.entries[0].at) : Date.now())),
+    );
+    if (!row.entries.length) {
+      detail.append(
+        el('span', { class: 'calendar-badge', dataset: { kind: row.kind } }, t(SERIES_KIND[row.kind].label)),
+        el('p', { class: 'detail-text' }, t(row.kind === 'future' ? 'calendar.futureNote' : row.kind === 'waiting' ? 'calendar.todayEmpty' : 'calendar.pastEmpty')),
+      );
+      return;
+    }
+    for (const entry of row.entries) {
+      const kind = SERIES_KIND[entry.kind];
+      const body = locale === 'en' ? entry.en || entry.zh : entry.zh || entry.en;
+      const timeKey = entry.kind === 'reset' ? (entry.effectiveAt ? 'calendar.resetAt' : 'calendar.confirmedAt') : entry.kind === 'banked' ? 'calendar.grantedAt' : 'calendar.postedAt';
+      detail.append(el('article', { class: 'calendar-entry', dataset: { kind: entry.kind, event: entry.id } },
+        el('span', { class: 'calendar-badge', dataset: { kind: entry.kind } }, t(kind.label)),
+        el('p', { class: 'detail-time' }, icon('clock'), t(timeKey, { time: formatDateTime(entry.at, locale, series.timeZone) })),
+        el('p', { class: 'detail-text' }, body || t(kind.label)),
+        entry.kind === 'banked' ? el('p', { class: 'detail-note' }, t('calendar.bankedNote')) : null,
+        entry.kind === 'announced' ? el('p', { class: 'detail-note' }, t('calendar.announcedNote')) : null,
+        el('p', { class: 'detail-reference' }, t('calendar.activityRef', { n: entry.day, date: formatDay(entry.at, locale, ACTIVITY_ZONE) })),
+        safeXUrl(entry.url) ? link(entry.url, t('common.viewOnX'), { external: true, className: 'detail-source' }) : null,
+      ));
+    }
+  }
+
+  function closestToday() {
+    return series.todayDate < series.startDate ? series.startDate : series.todayDate > series.endDate ? series.endDate : series.todayDate;
   }
 
   function choose(date) {
@@ -57,7 +74,7 @@ export function createSeriesCalendar(host, { locale, t }) {
     toolbar.replaceChildren(
       el('h3', { class: 'calendar-month' }, monthLabel.format(dateOf(`${month}-01`))),
       el('div', { class: 'calendar-controls' },
-        el('button', { type: 'button', class: 'calendar-current', onclick: () => { selected = series.rows[series.today - 1].date; month = monthOf(selected); paint(); } }, t(series.phase === 'active' ? 'calendar.today' : 'calendar.latest')),
+        el('button', { type: 'button', class: 'calendar-current', onclick: () => { selected = closestToday(); month = monthOf(selected); paint(); } }, t(series.todayDate >= series.startDate && series.todayDate <= series.endDate ? 'calendar.today' : 'calendar.latest')),
         el('button', { type: 'button', class: 'icon-btn', 'aria-label': t('calendar.previous'), disabled: index === 0, onclick: () => changeMonth(months[index - 1]) }, icon('arrow', { className: 'glyph arrow-back' })),
         el('button', { type: 'button', class: 'icon-btn', 'aria-label': t('calendar.next'), disabled: index === months.length - 1, onclick: () => changeMonth(months[index + 1]) }, icon('arrow')),
       ),
@@ -77,12 +94,12 @@ export function createSeriesCalendar(host, { locale, t }) {
         grid.append(el('div', { class: 'calendar-cell calendar-cell--outside', 'aria-hidden': 'true' }, el('span', { class: 'calendar-number' }, date.getUTCDate())));
         continue;
       }
-      const today = row.day === series.currentDay;
+      const today = row.date === series.todayDate;
       const kind = SERIES_KIND[row.kind] ?? SERIES_KIND.waiting;
       grid.append(el('button', {
         type: 'button', class: 'calendar-cell',
         dataset: { date: iso, kind: row.kind, today: String(today) },
-        'aria-label': `${dayLabel.format(date)} · ${t('series.dayN', { n: row.day })} · ${t(kind.label)}${today ? ` · ${t('calendar.today')}` : ''}`,
+        'aria-label': `${dayLabel.format(date)} · ${t(kind.label)}${row.entries.length > 1 ? ` · ${t('calendar.eventsCount', { n: row.entries.length })}` : ''}${today ? ` · ${t('calendar.today')}` : ''}`,
         'aria-pressed': String(iso === selected), 'aria-controls': 'calendar-detail',
         onclick: () => choose(iso),
       }, el('span', { class: 'calendar-number' }, date.getUTCDate(), today ? el('span', { class: 'calendar-today' }, t('calendar.today')) : null),
@@ -90,6 +107,7 @@ export function createSeriesCalendar(host, { locale, t }) {
         el('span', { class: 'calendar-dot', 'aria-hidden': 'true' }),
         el('span', { class: 'calendar-outcome-full', 'aria-hidden': 'true' }, t(kind.label)),
         el('span', { class: 'calendar-outcome-short', 'aria-hidden': 'true' }, t(`calendar.short.${row.kind}`)),
+        row.entries.length > 1 ? el('span', { class: 'calendar-more', 'aria-hidden': 'true' }, `+${row.entries.length - 1}`) : null,
       )));
     }
     legend.replaceChildren();
@@ -101,11 +119,17 @@ export function createSeriesCalendar(host, { locale, t }) {
 
   return {
     update(next) {
-      const nextSignature = JSON.stringify(next);
+      const display = calendarDays(next);
+      const nextSignature = JSON.stringify(display);
       if (nextSignature === signature) return;
       signature = nextSignature;
-      series = next;
-      selected ??= series.rows[series.today - 1].date;
+      if (series && series.timeZone !== display.timeZone) {
+        const chosenEvent = series.rows.find((row) => row.date === selected)?.entries[0]?.id;
+        selected = display.rows.find((row) => row.entries.some((entry) => entry.id === chosenEvent))?.date ?? selected;
+        month = selected ? monthOf(selected) : null;
+      }
+      series = display;
+      if (!selected || !series.rows.some((row) => row.date === selected)) selected = closestToday();
       month ??= monthOf(selected);
       const focusedDate = grid.contains(document.activeElement) ? document.activeElement.dataset.date : null;
       paint();

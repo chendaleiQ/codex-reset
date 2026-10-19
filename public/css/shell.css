@@ -471,3 +471,14 @@
   .theme-toggle, .locale-button { min-height: 40px; }
   .theme-toggle { width: 40px; }
 }
+
+/* One display timezone for every route, stored independently of the language. */
+.time-context { display: flex; align-items: center; gap: 10px; max-width: var(--page-max); padding: 0 var(--s6) 12px; margin: 0 auto; color: var(--ink-3); font-size: 12px; }
+.time-context label { flex-shrink: 0; }
+.time-context select { min-width: 0; max-width: 100%; padding: 6px 28px 6px 9px; border: 1px solid var(--hair); border-radius: 6px; background-color: var(--surface); color: var(--ink-2); font: inherit; cursor: pointer; }
+.time-context select:focus-visible { outline: 2px solid var(--line-cobalt); outline-offset: 2px; }
+@media (max-width: 800px) {
+  .time-context { padding: 0 var(--s4) 12px; }
+  .time-context select { flex: 1; max-width: 360px; min-height: 36px; }
+  #timezone-hint { display: none; }
+}

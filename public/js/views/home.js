@@ -8,6 +8,7 @@ import { createSeriesCalendar } from '../series-calendar.js';
 import { feedView, forecastView, timelineView } from '../model.js';
 import { getState, subscribe } from '../store.js';
 import { formatDateTime, formatNumber, relativeTime } from '../format.js';
+import { getTimeZone, subscribeTimeZone, zoneLabel } from '../time-zone.js';
 import { feedItem, leaf } from './_parts.js';
 
 const DEFAULT_POSTS = 5;
@@ -139,9 +140,9 @@ export async function render(host, app) {
 
   function paintSeries() {
     const series = buildSeries(sources());
-    progress.textContent = t(series.phase === 'active' ? 'series.dayOf' : `calendar.${series.phase}`, { n: series.today, total: series.length });
+    progress.textContent = t('series.recordedDays', { n: series.recordedDays, total: series.length });
     calendar.update(series);
-    calendarNote.textContent = t('calendar.timezone');
+    calendarNote.textContent = t('calendar.timezone', { zone: zoneLabel(getTimeZone(), locale) });
     if (state.timelineError || state.feedError) calendarNote.append(document.createTextNode(` ${t('calendar.partial')}`));
     else if (!state.timeline || !state.feed) calendarNote.append(document.createTextNode(` ${t('calendar.syncing')}`));
   }
@@ -229,7 +230,7 @@ export async function render(host, app) {
     if (slice === 'timeline') paintSeries();
     if (slice === 'forecast' || slice === 'feed') paintStrip();
   });
-  cleanups.push(unsubscribe);
+  cleanups.push(unsubscribe, subscribeTimeZone(() => { paintHeadline(); paintStrip(); paintSeries(); }));
 
   const ticker = setInterval(() => {
     if (!document.hidden) {

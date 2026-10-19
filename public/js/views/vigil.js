@@ -6,20 +6,14 @@
 
 import { el, icon, link, safeXUrl } from '../dom.js';
 import { endpoints } from '../api.js';
-import { vigilView, timelineView, crowdSize } from '../model.js';
+import { vigilView, timelineView, crowdSize, hourHistogram } from '../model.js';
 import { getState, loadTimeline, subscribe } from '../store.js';
-import { flag, formatDay, formatNumber, relativeTime } from '../format.js';
+import { flag, formatClock, formatDay, formatNumber, relativeTime } from '../format.js';
 import { errorBlock, faqBlock, leaf } from './_parts.js';
 
-const ZONE = 'America/Los_Angeles';
-const REFRESH_MS = 60_000;
+import { getTimeZone, hourInZone, subscribeTimeZone, zoneLabel } from '../time-zone.js';
 
-function hourInZone(iso) {
-  const at = Date.parse(iso ?? '');
-  if (!Number.isFinite(at)) return null;
-  const part = new Intl.DateTimeFormat('en-US', { timeZone: ZONE, hour: 'numeric', hour12: false }).format(new Date(at));
-  return Number(part) % 24;
-}
+const REFRESH_MS = 60_000;
 
 export async function render(host, app) {
   const state = getState();
@@ -135,15 +129,8 @@ export async function render(host, app) {
       clockHost.append(el('p', { class: 'empty' }, t('common.loading')));
       return;
     }
-    const buckets = Array.from({ length: 24 }, () => 0);
-    let total = 0;
-    for (const event of timeline.events) {
-      if (event.group !== 'reset' && !event.bankedGrant) continue;
-      const hour = hourInZone(event.announcedAt ?? event.effectiveAt);
-      if (hour === null) continue;
-      buckets[hour] += 1;
-      total += 1;
-    }
+    const buckets = hourHistogram(timeline.events);
+    const total = buckets.reduce((sum, count) => sum + count, 0);
     const max = Math.max(1, ...buckets);
     const peakFloor = Math.max(1, Math.round(max * 0.5));
     const nowHour = hourInZone(new Date().toISOString());
@@ -165,7 +152,7 @@ export async function render(host, app) {
       labels.append(el('span', { dataset: { peak: String(peak) } }, String(h).padStart(2, '0')));
     }
     const hits = buckets[nowHour ?? 0] ?? 0;
-    const time = new Intl.DateTimeFormat(locale === 'zh' ? 'zh-CN' : 'en-US', { timeZone: ZONE, hour: 'numeric', minute: '2-digit' }).format(new Date());
+    const time = formatClock(new Date().toISOString(), locale);
     const verdict = el('p', { class: 'clock-verdict' });
     verdict.dataset.zone = hits === 0 ? 'sleep' : hits >= peakFloor ? 'prime' : 'awake';
     verdict.textContent =
@@ -173,7 +160,7 @@ export async function render(host, app) {
         ? t('vigil.clockAsleep', { time })
         : t(hits >= peakFloor ? 'vigil.clockPrime' : 'vigil.clockAwake', { time, count: hits, total });
 
-    clockHost.append(plot, labels, verdict, el('p', { class: 'field-hint' }, `${ZONE} · ${t('radar.hoursNote')}`));
+    clockHost.append(plot, labels, verdict, el('p', { class: 'field-hint' }, `${zoneLabel(getTimeZone(), locale)} · ${t('radar.hoursNote')}`));
   }
 
   function paintProfile() {
@@ -234,7 +221,7 @@ export async function render(host, app) {
     if (slice === 'timeline') paintClock();
     if (slice === 'status') paintProfile();
   });
-  cleanups.push(unsubscribe);
+  cleanups.push(unsubscribe, subscribeTimeZone(() => { paintCount(); paintClock(); paintProfile(); }));
 
   const timer = setInterval(() => {
     if (!document.hidden) void loadVigil();

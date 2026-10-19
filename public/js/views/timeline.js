@@ -6,14 +6,17 @@
 import { el, icon, link, safeXUrl } from '../dom.js';
 import {
   resetRhythm,
+  eventTime,
+  isConfirmedReset,
   timelineView,
 } from '../model.js';
 import { getState, loadTimeline, subscribe } from '../store.js';
 import { formatDateTime, formatDay, formatDays, formatNumber, relativeTime } from '../format.js';
+import { getTimeZone, subscribeTimeZone } from '../time-zone.js';
 import { leaf, rhythmChart } from './_parts.js';
 
 const SORTS = {
-  date: (a, b) => Date.parse(b.announcedAt ?? b.effectiveAt ?? 0) - Date.parse(a.announcedAt ?? a.effectiveAt ?? 0),
+  date: (a, b) => Date.parse(eventTime(b) ?? 0) - Date.parse(eventTime(a) ?? 0),
   event: (a, b) => a.group.localeCompare(b.group),
 };
 
@@ -37,8 +40,10 @@ export async function render(host, app) {
   const logHost = el('div');
   const filterHost = el('div', { class: 'filters' });
 
-  const filter = { group: 'all', sort: 'date', direction: -1, timeZone: null };
+  const filter = { group: 'all', sort: 'date' };
   let limit = 40;
+  let chartCleanup;
+  cleanups.push(() => chartCleanup?.());
 
   function paintStats() {
     const timeline = state.timeline ? timelineView(state.timeline) : null;
@@ -54,6 +59,8 @@ export async function render(host, app) {
   }
 
   function paintRhythm() {
+    chartCleanup?.();
+    chartCleanup = null;
     const timeline = state.timeline ? timelineView(state.timeline) : null;
     rhythmHost.replaceChildren();
     if (!timeline) {
@@ -64,7 +71,7 @@ export async function render(host, app) {
     const readout = el('p', { class: 'pair-readout' }, t('timeline.rhythmNote'));
     const chart = rhythmChart(gaps, { locale, t, readout });
     rhythmHost.append(readout, chart);
-    if (typeof chart.cleanup === 'function') cleanups.push(chart.cleanup);
+    chartCleanup = chart.cleanup;
   }
 
   function paintFilters() {
@@ -94,23 +101,6 @@ export async function render(host, app) {
         ),
       );
     }
-    filterHost.append(
-      el(
-        'button',
-        {
-          type: 'button',
-          class: 'filter',
-          'aria-pressed': String(Boolean(filter.timeZone)),
-          title: t('timeline.filterZone'),
-          onclick: () => {
-            filter.timeZone = filter.timeZone ? null : Intl.DateTimeFormat().resolvedOptions().timeZone;
-            paintFilters();
-            paintLog();
-          },
-        },
-        filter.timeZone ? t('timeline.filterZoneLocal') : t('common.utc'),
-      ),
-    );
   }
 
   function paintLog() {
@@ -168,14 +158,14 @@ export async function render(host, app) {
     const body = el('tbody');
     const monthCounts = new Map();
     for (const { event } of shown) {
-      const stamp = event.announcedAt ?? event.effectiveAt;
-      const month = stamp ? monthLabel(stamp, locale, filter.timeZone ?? undefined) : null;
+      const stamp = eventTime(event);
+      const month = stamp ? monthLabel(stamp, locale, getTimeZone()) : null;
       if (month) monthCounts.set(month, (monthCounts.get(month) ?? 0) + 1);
     }
     let currentMonth = null;
     for (const { event } of shown) {
-      const stamp = event.announcedAt ?? event.effectiveAt;
-      const month = stamp ? monthLabel(stamp, locale, filter.timeZone ?? undefined) : null;
+      const stamp = eventTime(event);
+      const month = stamp ? monthLabel(stamp, locale, getTimeZone()) : null;
       if (month && month !== currentMonth) {
         currentMonth = month;
         body.append(
@@ -191,7 +181,7 @@ export async function render(host, app) {
           ),
         );
       }
-      const when = formatDateTime(stamp, locale, filter.timeZone ?? undefined);
+      const when = formatDateTime(stamp, locale, getTimeZone());
       const evidence = evidenceMark(event, t);
       const reason = event.reasonTags.length
         ? el('div', { class: 'ledger-tags' }, event.reasonTags.map((tag) => el('span', { class: 'chit' }, tag)))
@@ -204,7 +194,7 @@ export async function render(host, app) {
           'td',
           { class: 'ledger-time' },
           el('span', { class: 'ledger-main' }, when ?? t('common.unavailable')),
-          el('span', { class: 'ledger-sub' }, relativeTime(event.announcedAt, Date.now(), locale)),
+          el('span', { class: 'ledger-sub' }, relativeTime(stamp, Date.now(), locale)),
         ),
         el('td', { class: 'ledger-summary' }, event.summary, xUrl ? link(xUrl, ` ${t('common.originalPost')}`, { external: true }) : null),
         el('td', {}, evidence),
@@ -257,7 +247,7 @@ export async function render(host, app) {
   const unsubscribe = subscribe((slice) => {
     if (slice === 'timeline') paintAll();
   });
-  cleanups.push(unsubscribe);
+  cleanups.push(unsubscribe, subscribeTimeZone(() => { paintRhythm(); paintLog(); }));
 
   return () => {
     for (const cleanup of cleanups) cleanup?.();
@@ -269,7 +259,7 @@ function evidenceMark(event, t) {
     return [el('span', { class: 'mark', dataset: { tone: 'info', shape: 'rule' } }, t('radar.kind.banked'))];
   }
   const status = String(event.verification ?? '').toLowerCase();
-  if (status.includes('verified') || event.confirmed) {
+  if (isConfirmedReset(event)) {
     return [el('span', { class: 'mark', dataset: { tone: 'ok', shape: 'rule' } }, t('timeline.verified'))];
   }
   if (status.includes('observed')) {

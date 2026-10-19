@@ -5,6 +5,7 @@
  */
 
 import { bounds, daysBetween, parseTime } from './format.js';
+import { getTimeZone, hourInZone } from './time-zone.js';
 
 /* ------------------------------------------------------------------ forecast */
 
@@ -149,6 +150,11 @@ export function feedView(feed) {
 
 export const TIMELINE_GROUPS = ['reset', 'banked', 'signal', 'incident', 'milestone'];
 
+/** Effective time is authoritative; announcement time is the fallback. */
+export const eventTime = (event) => event.effectiveAt ?? event.announcedAt;
+export const isConfirmedReset = (event) => event.group === 'reset' && !event.bankedGrant &&
+  (event.confirmed === true || ['verified', 'confirmed'].includes(String(event.verification ?? '').toLowerCase()));
+
 export function timelineView(payload) {
   if (!payload) return null;
   const events = (Array.isArray(payload.events) ? payload.events : []).map((event) => ({
@@ -183,7 +189,7 @@ export function timelineView(payload) {
   }));
   const counts = events.reduce((acc, event) => {
     acc.total += 1;
-    if (event.group === 'reset') acc.reset += 1;
+    if (isConfirmedReset(event)) acc.reset += 1;
     if (event.group === 'banked' || event.bankedGrant) acc.banked += 1;
     return acc;
   }, { total: 0, reset: 0, banked: 0 });
@@ -193,8 +199,8 @@ export function timelineView(payload) {
 /** Days between consecutive verified resets, oldest first. */
 export function resetRhythm(events) {
   const resets = events
-    .filter((event) => event.group === 'reset' && !event.bankedGrant)
-    .map((event) => ({ at: parseTime(event.announcedAt ?? event.effectiveAt), event }))
+    .filter(isConfirmedReset)
+    .map((event) => ({ at: parseTime(eventTime(event)), event }))
     .filter((row) => row.at !== null)
     .sort((a, b) => a.at - b.at);
   const gaps = [];
@@ -204,13 +210,13 @@ export function resetRhythm(events) {
   return { resets, gaps };
 }
 
-export function hourHistogram(events) {
+export function hourHistogram(events, timeZone = getTimeZone()) {
   const buckets = Array.from({ length: 24 }, () => 0);
   for (const event of events) {
-    if (event.group !== 'reset' && !event.bankedGrant) continue;
-    const at = parseTime(event.announcedAt ?? event.effectiveAt);
-    if (at === null) continue;
-    buckets[new Date(at).getUTCHours()] += 1;
+    if (!isConfirmedReset(event) && event.group !== 'banked' && !event.bankedGrant) continue;
+    const hour = hourInZone(eventTime(event), timeZone);
+    if (hour === null) continue;
+    buckets[hour] += 1;
   }
   return buckets;
 }
