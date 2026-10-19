@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Codex Reset — local runtime.
+ * Codex Reset — HTTP runtime.
  *
  * Dependency-free HTTP server that
  *   1. serves the static client from ./public,
@@ -26,6 +26,8 @@ const PORT = Number(readArg('--port', process.env.PORT || 4173));
 const ORIGIN = readArg('--origin', process.env.CODEX_RESET_ORIGIN || 'https://codex-reset.com');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const CACHE_TTL_MS = 15_000;
+const releasePath = path.join(__dirname, 'RELEASE.json');
+const release = fs.existsSync(releasePath) ? JSON.parse(fs.readFileSync(releasePath, 'utf8')) : null;
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -124,11 +126,21 @@ function sendStatic(res, filePath) {
 }
 
 const server = http.createServer((req, res) => {
-  const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+  let url;
+  let decoded;
+  try {
+    url = new URL(req.url || '/', 'http://localhost');
+    decoded = decodeURIComponent(url.pathname);
+  } catch {
+    res.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' });
+    res.end('Bad request');
+    return;
+  }
 
   if (url.pathname === '/__health') {
-    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ ok: true, origin: ORIGIN, cached: cache.size }));
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(JSON.stringify({ ok: true, origin: ORIGIN, cached: cache.size,
+      release: release ? { id: release.id, commit: release.commit, dirty: release.dirty, sha256: release.sha256 } : null }));
     return;
   }
 
@@ -142,7 +154,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  const decoded = decodeURIComponent(url.pathname);
   const candidate = path.join(PUBLIC_DIR, path.normalize(decoded).replace(/^(\.\.[/\\])+/, ''));
   if (candidate.startsWith(PUBLIC_DIR) && path.extname(candidate) && fs.existsSync(candidate)) {
     sendStatic(res, candidate);
@@ -152,5 +163,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  process.stdout.write(`Codex Reset running at http://localhost:${PORT}  (upstream: ${ORIGIN})\n`);
+  process.stdout.write(`Codex Reset running at http://localhost:${server.address().port}  (upstream: ${ORIGIN})\n`);
 });
