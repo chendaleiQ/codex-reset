@@ -38,7 +38,7 @@ async function main() {
   const { buildSeries, calendarDays, seriesDay } = await load('series.js');
   const { activityMidnight, dateKey, hourInZone, zoneOffset, setTimeZone, getTimeZone, subscribeTimeZone } = await load('time-zone.js');
   const { formatClock, formatDateTime } = await load('format.js');
-  const { eventTime, resetRhythm, hourHistogram, timelineView } = await load('model.js');
+  const { eventTime, resetRhythm, hourHistogram, timelineView, feedView } = await load('model.js');
   const { translator } = await load('i18n.js');
   assert.equal(seriesDay('2026-10-05T06:59:59Z'), 0);
   assert.equal(seriesDay('2026-10-05T07:00:00Z'), 1);
@@ -52,7 +52,7 @@ async function main() {
 
   // It is already the 19th in Beijing while the activity is still on the 18th.
   const now = Date.parse('2026-10-19T00:30:00Z');
-  const project = (series, timeZone = 'Asia/Shanghai') => calendarDays(series, { now, timeZone });
+  const project = (series, timeZone = 'Asia/Shanghai') => calendarDays(series, { now, timeZone, basis: 'event' });
   const row = (series, date) => series.rows.find((row) => row.date === date);
   const empty = buildSeries({ now });
   const local = project(empty);
@@ -119,6 +119,35 @@ async function main() {
   assert.equal(hourInZone('2026-10-17T18:30:00Z', 'Asia/Kathmandu'), 0);
   assert.equal(dateKey('invalid'), null);
 
+  // The upstream challenge also reads radar_context; Day 14 exists only there.
+  const day14 = { id: '2111990254408434095', at: '2026-10-19T01:18:10.000Z',
+    text: 'Day 14/ Small quality of life improvement. You can now edit previous messages within a thread in the desktop app.',
+    localized_text: '第 14 天/ 现在可以在桌面应用中编辑线程内的历史消息了。',
+    url: 'https://x.com/thsottiaux/status/2111990254408434095', visibility_only: true };
+  const completeSeed = JSON.parse(fs.readFileSync(path.join(root, 'public/data/series.json'), 'utf8'));
+  const contextFeed = feedView({ tweets: [], radar_context: [day14, { id: 'chatter', at: day14.at, text: 'A nice Monday' }] });
+  const challenge = buildSeries({ seed: completeSeed, feed: contextFeed, now });
+  assert.equal(challenge.recordedDays, 14);
+  assert.equal(challenge.counts.reset, 0, 'Context posts do not manufacture confirmed resets');
+  assert.equal(contextFeed.posts.length, 0, 'Context remains outside the signal feed');
+  const byActivity = calendarDays(challenge, { now, timeZone: 'Asia/Shanghai' });
+  assert.equal(byActivity.basis, 'activity', 'Activity is the default calendar basis');
+  assert.equal(byActivity.rows.length, 28);
+  assert.equal(row(byActivity, '2026-10-05').kind, 'improvement');
+  assert.equal(row(byActivity, '2026-10-16').day, 12);
+  assert.equal(row(byActivity, '2026-10-16').kind, 'improvement');
+  assert.equal(row(byActivity, '2026-10-16').entries[0].at, '2026-10-16T23:55:11.000Z');
+  assert.equal(row(byActivity, '2026-10-18').day, 14);
+  assert.equal(row(byActivity, '2026-10-18').kind, 'improvement');
+  assert.match(row(byActivity, '2026-10-18').entries[0].zh, /编辑线程/);
+  const inUTC = calendarDays(challenge, { now, timeZone: 'UTC' });
+  assert.deepEqual(byActivity.rows, inUTC.rows, 'Changing timestamp timezone cannot move activity dates');
+  assert.equal(row(project(challenge), '2026-10-16').kind, 'empty');
+  assert.equal(row(project(challenge), '2026-10-17').entries[0].day, 12);
+  assert.equal(row(project(challenge), '2026-10-19').entries[0].day, 14);
+  const duplicatedFeed = feedView({ tweets: [day14], radar_context: [day14] });
+  assert.equal(buildSeries({ feed: duplicatedFeed, now }).entries.length, 1);
+
   let notifications = 0;
   const stop = subscribeTimeZone(() => notifications++);
   setTimeZone('Asia/Shanghai');
@@ -136,9 +165,9 @@ async function main() {
   assert.equal(notifications, before);
   for (const locale of ['zh', 'en']) {
     const t = translator(locale);
-    for (const key of ['timezone.label', 'calendar.todayEmpty', 'calendar.pastEmpty', 'calendar.activityRef', 'series.kind.empty', 'calendar.short.empty']) assert.notEqual(t(key), key);
+    for (const key of ['timezone.label', 'calendar.todayEmpty', 'calendar.pastEmpty', 'calendar.activityRef', 'series.kind.empty', 'calendar.short.empty', 'calendar.basis.activity', 'calendar.basis.event', 'calendar.activityPending']) assert.notEqual(t(key), key);
   }
-  console.log('PASS: module syntax; timezone dates, local today and DST; effective-time grouping; multiple events; announcement confirmation; shared timezone formatting and subscriptions; bilingual states.');
+  console.log('PASS: module syntax; timezone dates, local today and DST; effective-time grouping; multiple events; announcement confirmation; shared timezone formatting and subscriptions; activity/event projections; context-only updates and deduplication; bilingual states.');
 
 }
 

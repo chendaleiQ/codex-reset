@@ -53,7 +53,9 @@ export function buildSeries({ feed, timeline, seed, now = Date.now() } = {}) {
     });
   }
   for (const post of seed?.posts ?? []) addPost({ id: post.id, at: post.at, text: post.en, localizedText: post.zh, url: `https://x.com/thsottiaux/status/${post.id}` }, true);
-  for (const post of feed?.posts ?? []) addPost(post);
+  // Product challenge posts can live only in radar_context. That lane is
+  // excluded from reset signals, but still belongs in the activity calendar.
+  for (const post of [...(feed?.posts ?? []), ...(feed?.radarContext ?? [])]) addPost(post);
 
   const observations = new Map();
   for (const event of timeline?.events ?? []) {
@@ -83,16 +85,24 @@ export function buildSeries({ feed, timeline, seed, now = Date.now() } = {}) {
   };
 }
 
-/** Group actual events in the reader's timezone. One date may hold several events. */
-export function calendarDays(series, { timeZone = getTimeZone(), now = Date.now() } = {}) {
-  const todayDate = dateKey(now, timeZone);
+/** Stable activity dates do not move when the reader changes display timezone. */
+export function activityDate(day) {
+  return new Date((FIRST_INDEX + day - 1) * DAY_MS).toISOString().slice(0, 10);
+}
+
+/** Activity progress and actual event dates are two explicit projections. */
+export function calendarDays(series, { basis = 'activity', timeZone = getTimeZone(), now = Date.now() } = {}) {
+  const activity = basis === 'activity';
+  const todayDate = dateKey(now, activity ? ACTIVITY_ZONE : timeZone);
   const byDate = new Map();
   for (const entry of series.entries) {
-    const date = dateKey(entry.at, timeZone);
+    const date = activity ? activityDate(entry.day) : dateKey(entry.at, timeZone);
     if (!byDate.has(date)) byDate.set(date, []);
     byDate.get(date).push(entry);
   }
-  const dates = [...byDate.keys(), dateKey(series.startAt, timeZone), dateKey(series.endAt - 1, timeZone)].sort();
+  const dates = activity
+    ? [activityDate(1), activityDate(SERIES_LENGTH)]
+    : [...byDate.keys(), dateKey(series.startAt, timeZone), dateKey(series.endAt - 1, timeZone)].sort();
   const startDate = dates[0];
   const endDate = dates.at(-1);
   const rows = [];
@@ -101,9 +111,9 @@ export function calendarDays(series, { timeZone = getTimeZone(), now = Date.now(
     const date = new Date(at).toISOString().slice(0, 10);
     const entries = byDate.get(date) ?? [];
     const primary = [...entries].sort((a, b) => priority[b.kind] - priority[a.kind])[0];
-    rows.push({ date, entries, kind: primary?.kind ?? (date > todayDate ? 'future' : date === todayDate ? 'waiting' : 'empty') });
+    rows.push({ date, day: activity ? at / DAY_MS - FIRST_INDEX + 1 : null, entries, kind: primary?.kind ?? (date > todayDate ? 'future' : date === todayDate ? 'waiting' : 'empty') });
   }
-  return { ...series, rows, startDate, endDate, todayDate, timeZone };
+  return { ...series, rows, startDate, endDate, todayDate, timeZone, basis };
 }
 
 export const SERIES_KIND = {

@@ -9,30 +9,34 @@ const monthOf = (date) => date.slice(0, 7);
 
 export function createSeriesCalendar(host, { locale, t }) {
   let series;
+  let model;
+  let basis = 'activity';
   let selected;
   let month;
   let signature;
   const monthLabel = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', timeZone: 'UTC' });
   const dayLabel = new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric', weekday: 'long', timeZone: 'UTC' });
+  const modeControl = el('div', { class: 'calendar-view-switch', role: 'group', 'aria-label': t('calendar.basisLabel') });
+  const modeNote = el('p', { class: 'calendar-basis-note' });
   const toolbar = el('div', { class: 'calendar-toolbar' });
   const grid = el('div', { class: 'calendar-grid', 'aria-label': t('calendar.choose') });
   const legend = el('div', { class: 'calendar-legend' });
   const detail = el('section', { class: 'calendar-detail', id: 'calendar-detail', 'aria-live': 'polite', 'aria-atomic': 'true' });
-  host.append(el('div', { class: 'calendar-layout' }, el('div', { class: 'calendar-main' }, toolbar, grid, legend), detail));
+  host.append(modeControl, modeNote, el('div', { class: 'calendar-layout' }, el('div', { class: 'calendar-main' }, toolbar, grid, legend), detail));
 
   function paintDetail() {
     const row = series.rows.find((entry) => entry.date === selected);
     if (!row) return;
     detail.dataset.kind = row.kind;
     detail.replaceChildren(
-      el('p', { class: 'detail-eyebrow' }, t('calendar.detail')),
+      el('p', { class: 'detail-eyebrow' }, t(series.basis === 'activity' ? 'calendar.activityDetail' : 'calendar.detail'), row.day ? el('b', {}, t('series.dayN', { n: row.day })) : null),
       el('h3', {}, dayLabel.format(dateOf(row.date))),
-      el('p', { class: 'detail-zone' }, zoneLabel(series.timeZone, locale, row.entries[0] ? Date.parse(row.entries[0].at) : Date.now())),
+      el('p', { class: 'detail-zone' }, t('calendar.detailTimeZone', { zone: zoneLabel(series.timeZone, locale, row.entries[0] ? Date.parse(row.entries[0].at) : Date.now()) })),
     );
     if (!row.entries.length) {
       detail.append(
-        el('span', { class: 'calendar-badge', dataset: { kind: row.kind } }, t(SERIES_KIND[row.kind].label)),
-        el('p', { class: 'detail-text' }, t(row.kind === 'future' ? 'calendar.futureNote' : row.kind === 'waiting' ? 'calendar.todayEmpty' : 'calendar.pastEmpty')),
+        el('span', { class: 'calendar-badge', dataset: { kind: row.kind } }, labelFor(row)),
+        el('p', { class: 'detail-text' }, t(row.kind === 'future' ? 'calendar.futureNote' : row.kind === 'waiting' ? (series.basis === 'activity' ? 'calendar.activityWaiting' : 'calendar.todayEmpty') : (series.basis === 'activity' ? 'calendar.activityEmpty' : 'calendar.pastEmpty'))),
       );
       return;
     }
@@ -52,6 +56,10 @@ export function createSeriesCalendar(host, { locale, t }) {
     }
   }
 
+  function labelFor(row) {
+    return t(basis === 'activity' && row.kind === 'waiting' ? 'calendar.activityPending' : SERIES_KIND[row.kind].label);
+  }
+
   function closestToday() {
     return series.todayDate < series.startDate ? series.startDate : series.todayDate > series.endDate ? series.endDate : series.todayDate;
   }
@@ -69,12 +77,22 @@ export function createSeriesCalendar(host, { locale, t }) {
   }
 
   function paint() {
+    modeControl.replaceChildren(...['activity', 'event'].map((mode) => el('button', {
+      type: 'button', 'aria-pressed': String(basis === mode), dataset: { basis: mode },
+      onclick: () => {
+        if (basis === mode) return;
+        basis = mode;
+        update(model);
+        modeControl.querySelector(`[data-basis="${mode}"]`)?.focus({ preventScroll: true });
+      },
+    }, t(`calendar.basis.${mode}`))));
+    modeNote.textContent = t(`calendar.basisNote.${basis}`, { zone: zoneLabel(series.timeZone, locale) });
     const months = [...new Set(series.rows.map((row) => monthOf(row.date)))];
     const index = months.indexOf(month);
     toolbar.replaceChildren(
       el('h3', { class: 'calendar-month' }, monthLabel.format(dateOf(`${month}-01`))),
       el('div', { class: 'calendar-controls' },
-        el('button', { type: 'button', class: 'calendar-current', onclick: () => { selected = closestToday(); month = monthOf(selected); paint(); } }, t(series.todayDate >= series.startDate && series.todayDate <= series.endDate ? 'calendar.today' : 'calendar.latest')),
+        el('button', { type: 'button', class: 'calendar-current', onclick: () => { selected = closestToday(); month = monthOf(selected); paint(); } }, t(series.todayDate >= series.startDate && series.todayDate <= series.endDate ? (basis === 'activity' ? 'calendar.activityToday' : 'calendar.today') : 'calendar.latest')),
         el('button', { type: 'button', class: 'icon-btn', 'aria-label': t('calendar.previous'), disabled: index === 0, onclick: () => changeMonth(months[index - 1]) }, icon('arrow', { className: 'glyph arrow-back' })),
         el('button', { type: 'button', class: 'icon-btn', 'aria-label': t('calendar.next'), disabled: index === months.length - 1, onclick: () => changeMonth(months[index + 1]) }, icon('arrow')),
       ),
@@ -98,14 +116,14 @@ export function createSeriesCalendar(host, { locale, t }) {
       const kind = SERIES_KIND[row.kind] ?? SERIES_KIND.waiting;
       grid.append(el('button', {
         type: 'button', class: 'calendar-cell',
-        dataset: { date: iso, kind: row.kind, today: String(today) },
-        'aria-label': `${dayLabel.format(date)} · ${t(kind.label)}${row.entries.length > 1 ? ` · ${t('calendar.eventsCount', { n: row.entries.length })}` : ''}${today ? ` · ${t('calendar.today')}` : ''}`,
+        dataset: { date: iso, kind: row.kind, today: String(today), ...(row.day ? { day: row.day } : {}) },
+        'aria-label': `${dayLabel.format(date)}${row.day ? ` · ${t('series.dayN', { n: row.day })}` : ''} · ${labelFor(row)}${row.entries.length > 1 ? ` · ${t('calendar.eventsCount', { n: row.entries.length })}` : ''}${today ? ` · ${t(basis === 'activity' ? 'calendar.activityToday' : 'calendar.today')}` : ''}`,
         'aria-pressed': String(iso === selected), 'aria-controls': 'calendar-detail',
         onclick: () => choose(iso),
-      }, el('span', { class: 'calendar-number' }, date.getUTCDate(), today ? el('span', { class: 'calendar-today' }, t('calendar.today')) : null),
+      }, el('span', { class: 'calendar-number' }, date.getUTCDate(), row.day ? el('span', { class: 'calendar-activity-day', 'aria-hidden': 'true' }, `D${row.day}`) : null, today && basis === 'event' ? el('span', { class: 'calendar-today' }, t('calendar.today')) : null),
       el('span', { class: 'calendar-outcome' },
         el('span', { class: 'calendar-dot', 'aria-hidden': 'true' }),
-        el('span', { class: 'calendar-outcome-full', 'aria-hidden': 'true' }, t(kind.label)),
+        el('span', { class: 'calendar-outcome-full', 'aria-hidden': 'true' }, labelFor(row)),
         el('span', { class: 'calendar-outcome-short', 'aria-hidden': 'true' }, t(`calendar.short.${row.kind}`)),
         row.entries.length > 1 ? el('span', { class: 'calendar-more', 'aria-hidden': 'true' }, `+${row.entries.length - 1}`) : null,
       )));
@@ -117,23 +135,27 @@ export function createSeriesCalendar(host, { locale, t }) {
     paintDetail();
   }
 
-  return {
-    update(next) {
-      const display = calendarDays(next);
-      const nextSignature = JSON.stringify(display);
-      if (nextSignature === signature) return;
-      signature = nextSignature;
-      if (series && series.timeZone !== display.timeZone) {
-        const chosenEvent = series.rows.find((row) => row.date === selected)?.entries[0]?.id;
-        selected = display.rows.find((row) => row.entries.some((entry) => entry.id === chosenEvent))?.date ?? selected;
-        month = selected ? monthOf(selected) : null;
-      }
-      series = display;
-      if (!selected || !series.rows.some((row) => row.date === selected)) selected = closestToday();
-      month ??= monthOf(selected);
-      const focusedDate = grid.contains(document.activeElement) ? document.activeElement.dataset.date : null;
-      paint();
-      if (focusedDate) grid.querySelector(`[data-date="${focusedDate}"]`)?.focus({ preventScroll: true });
-    },
-  };
+  function update(next) {
+    model = next;
+    const display = calendarDays(next, { basis });
+    const nextSignature = JSON.stringify(display);
+    if (nextSignature === signature) return;
+    signature = nextSignature;
+    if (series && (series.timeZone !== display.timeZone || series.basis !== display.basis)) {
+      const chosenEvent = series.rows.find((row) => row.date === selected)?.entries[0]?.id;
+      selected = display.rows.find((row) => row.entries.some((entry) => entry.id === chosenEvent))?.date ?? selected;
+      month = selected ? monthOf(selected) : null;
+    }
+    series = display;
+    if (!selected || !series.rows.some((row) => row.date === selected)) {
+      selected = !selected ? closestToday() : selected < series.startDate ? series.startDate : series.endDate;
+      month = monthOf(selected);
+    }
+    month ??= monthOf(selected);
+    const focusedDate = grid.contains(document.activeElement) ? document.activeElement.dataset.date : null;
+    paint();
+    if (focusedDate) grid.querySelector(`[data-date="${focusedDate}"]`)?.focus({ preventScroll: true });
+  }
+
+  return { update };
 }

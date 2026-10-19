@@ -113,9 +113,8 @@ export function feedKind(post) {
   return 'context';
 }
 
-export function feedView(feed) {
-  if (!feed) return null;
-  const posts = (Array.isArray(feed.tweets) ? feed.tweets : []).map((post) => ({
+function feedPost(post) {
+  return {
     id: String(post.id ?? ''),
     kind: feedKind(post),
     at: post.at ?? null,
@@ -130,7 +129,12 @@ export function feedView(feed) {
     likes: Number(post.likes) || 0,
     lane: post.tibo_lane ?? null,
     explicit: Boolean(post.explicit_reset_claim),
-  }));
+  };
+}
+
+export function feedView(feed) {
+  if (!feed) return null;
+  const posts = (Array.isArray(feed.tweets) ? feed.tweets : []).map(feedPost);
   return {
     fetchedAt: feed.fetched_at ?? null,
     stale: Boolean(feed.stale),
@@ -140,7 +144,7 @@ export function feedView(feed) {
     profile: feed.profile ?? null,
     signal: feed.signal ?? null,
     posts,
-    radarContext: Array.isArray(feed.radar_context) ? feed.radar_context : [],
+    radarContext: (Array.isArray(feed.radar_context) ? feed.radar_context : []).map(feedPost),
     banked: Array.isArray(feed.banked_observations) ? feed.banked_observations : [],
     events: Array.isArray(feed.events) ? feed.events : [],
   };
