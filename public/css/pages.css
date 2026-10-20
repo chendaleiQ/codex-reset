@@ -500,17 +500,6 @@
     order: 3;
   }
 
-  .feed-item {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--s2);
-  }
-
-  .feed-meta {
-    flex-direction: row;
-    align-items: baseline;
-    gap: var(--s3);
-  }
-
   .poll-row {
     grid-template-columns: 6.5rem minmax(0, 1fr) 3.5rem;
   }

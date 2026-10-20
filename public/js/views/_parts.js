@@ -154,52 +154,135 @@ export function hoursChart(buckets, { locale, t, zone = 'UTC' }) {
 
 /* ----------------------------------------------------------------- pulse feed */
 
+const TIBO_PROFILE = 'https://x.com/thsottiaux';
+const LINK_TOKEN = /(https?:\/\/[^\s]+|@[A-Za-z0-9_]{1,15}|#[\p{L}\p{N}_]+)/gu;
+const URL_TRAIL = /[.,!?;:)\]'"”’。，！？；：、）】]+$/u;
+
+/** Links, mentions and hashtags are what make a post read as a tweet. */
+function linkify(value) {
+  const source = String(value ?? '');
+  const nodes = [];
+  let last = 0;
+  for (const match of source.matchAll(LINK_TOKEN)) {
+    let token = match[0];
+    let trail = '';
+    if (token.startsWith('http')) {
+      const trimmed = token.replace(URL_TRAIL, '');
+      trail = token.slice(trimmed.length);
+      token = trimmed;
+    }
+    if (match.index > last) nodes.push(document.createTextNode(source.slice(last, match.index)));
+    if (token.startsWith('http')) {
+      nodes.push(link(token, token, { external: true, className: 'feed-link' }));
+    } else if (token.startsWith('@')) {
+      nodes.push(link(`https://x.com/${token.slice(1)}`, token, { external: true, className: 'feed-link' }));
+    } else {
+      nodes.push(
+        link(`https://x.com/hashtag/${encodeURIComponent(token.slice(1))}`, token, { external: true, className: 'feed-link' }),
+      );
+    }
+    if (trail) nodes.push(document.createTextNode(trail));
+    last = match.index + match[0].length;
+  }
+  if (last < source.length) nodes.push(document.createTextNode(source.slice(last)));
+  return nodes;
+}
+
 /**
- * A post is shown in the reader's language. The original is never hidden, only
- * folded, and the fold is labelled with what the translation is.
+ * One post as a single-author tweet: avatar, author line, text, engagement.
+ * The evidence category stays on the row, so a social-looking post never
+ * passes for a verified reset.
  */
 export function feedItem(post, { t, locale, now = Date.now() }) {
   const kindKey = `radar.kind.${post.kind}`;
   const kindLabel = t(kindKey);
   const kindNote = t(`radar.kindNote.${post.kind}`);
-  const meta = el(
-    'div',
-    { class: 'feed-meta' },
+  const xUrl = safeXUrl(post.url);
+  const when = relativeTime(post.at, now, locale);
+  const absolute = formatDateTime(post.at, locale);
+
+  const kind = el(
+    'span',
+    { class: 'feed-kind', dataset: { kind: post.kind }, title: kindNote === `radar.kindNote.${post.kind}` ? undefined : kindNote },
+    kindLabel === kindKey ? post.kind : kindLabel,
+  );
+
+  let time;
+  if (xUrl) {
+    time = link(xUrl, when, { external: true, className: 'feed-time' });
+    if (absolute) time.title = absolute;
+  } else {
+    time = el('time', { class: 'feed-time', datetime: post.at ?? undefined }, when);
+  }
+
+  const author = link(TIBO_PROFILE, 'Tibo', { external: true, className: 'feed-author' });
+  author.append(
     el(
       'span',
-      { class: 'feed-kind', dataset: { kind: post.kind }, title: kindNote === `radar.kindNote.${post.kind}` ? undefined : kindNote },
-      kindLabel === kindKey ? post.kind : kindLabel,
+      { class: 'feed-verified', role: 'img', 'aria-label': t('feed.verified'), title: t('feed.verified') },
+      icon('check', { size: 10 }),
     ),
-    el('span', { class: 'feed-time' }, relativeTime(post.at, now, locale)),
   );
-  const body = el('div', { class: 'feed-body' });
+
+  const head = el(
+    'header',
+    { class: 'feed-head' },
+    author,
+    el('span', { class: 'feed-handle' }, '@thsottiaux'),
+    el('span', { class: 'feed-sep', 'aria-hidden': 'true' }, '·'),
+    time,
+    kind,
+  );
+
+  const body = el('div', { class: 'feed-body' }, head);
+  if (post.isReply && post.replyingTo) {
+    body.append(el('p', { class: 'feed-reply' }, t('feed.replyingTo', { handle: post.replyingTo })));
+  }
 
   const translated = locale !== 'en' && post.localizedText && post.localizedText !== post.text;
-  body.append(el('p', { class: 'feed-text' }, translated ? post.localizedText : post.text || post.localizedText || ''));
+  body.append(el('p', { class: 'feed-text' }, ...linkify(translated ? post.localizedText : post.text || post.localizedText || '')));
   if (translated) {
     body.append(
       el(
         'details',
         { class: 'translation' },
         el('summary', {}, t('common.showOriginal')),
-        el('p', {}, post.text),
+        el('p', {}, ...linkify(post.text)),
       ),
     );
   }
+
   const foot = el('div', { class: 'feed-foot' });
-  const xUrl = safeXUrl(post.url);
-  if (xUrl) foot.append(link(xUrl, t('common.viewOnX'), { external: true, className: 'chit' }));
-  if (post.isReply && post.replyingTo) foot.append(el('span', { class: 'muted' }, `↩ @${post.replyingTo}`));
-  if (translated) foot.append(el('span', { class: 'muted' }, t('common.translated')));
   if (post.replies || post.reposts || post.likes) {
     const stats = el('span', { class: 'feed-stats' });
-    if (post.replies) stats.append(el('span', { class: 'feed-stat' }, icon('reply', { size: 13 }), formatCompact(post.replies, locale)));
-    if (post.reposts) stats.append(el('span', { class: 'feed-stat' }, icon('repost', { size: 13 }), formatCompact(post.reposts, locale)));
-    if (post.likes) stats.append(el('span', { class: 'feed-stat' }, icon('heart', { size: 13 }), formatCompact(post.likes, locale)));
+    const stat = (name, value, labelKey) =>
+      el(
+        'span',
+        { class: 'feed-stat', title: t(labelKey) },
+        icon(name, { size: 16 }),
+        el('span', { class: 'sr-only' }, t(labelKey)),
+        formatCompact(value, locale),
+      );
+    if (post.replies) stats.append(stat('reply', post.replies, 'feed.replies'));
+    if (post.reposts) stats.append(stat('repost', post.reposts, 'feed.reposts'));
+    if (post.likes) stats.append(stat('heart', post.likes, 'feed.likes'));
     foot.append(stats);
   }
-  body.append(foot);
-  return el('article', { class: 'feed-item', dataset: { kind: post.kind } }, meta, body);
+  if (xUrl) {
+    const open = link(xUrl, t('common.viewOnX'), { external: true, className: 'feed-open' });
+    open.append(icon('external', { size: 13 }));
+    foot.append(open);
+  }
+  if (foot.childElementCount) body.append(foot);
+
+  const avatar = link(
+    TIBO_PROFILE,
+    el('img', { src: '/img/tibo-avatar.jpg', alt: '', width: 48, height: 48, loading: 'lazy', decoding: 'async' }),
+    { external: true, className: 'feed-avatar' },
+  );
+  avatar.setAttribute('aria-label', 'Tibo (@thsottiaux)');
+
+  return el('article', { class: 'feed-item', dataset: { kind: post.kind } }, avatar, body);
 }
 
 /* ----------------------------------------------------------------- crowd poll */

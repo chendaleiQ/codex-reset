@@ -125,6 +125,12 @@ const DICT = {
     'common.dismiss': '关闭',
     'common.live': '实时',
 
+    'feed.verified': '认证账号',
+    'feed.replyingTo': '回复 @{handle}',
+    'feed.replies': '回复',
+    'feed.reposts': '转发',
+    'feed.likes': '喜欢',
+
     'route.title': '重置线路图',
     'route.descLastReset': '最近一次已确认重置：{time}',
     'route.descElapsed': '已等待 {days} 天',
@@ -512,6 +518,12 @@ const DICT = {
     'common.copyFailed': 'Copy failed',
     'common.dismiss': 'Dismiss',
     'common.live': 'Live',
+
+    'feed.verified': 'Verified account',
+    'feed.replyingTo': 'Replying to @{handle}',
+    'feed.replies': 'Replies',
+    'feed.reposts': 'Reposts',
+    'feed.likes': 'Likes',
 
     'route.title': 'Reset route',
     'route.descLastReset': 'Last verified reset {time}',

@@ -212,8 +212,11 @@ Everything is a ruled thing on a sheet; nothing is a floating card.
   observed, a hollow ring for claimed, in `ok` / `warn` / `bad` / `plain`.
 - **`.chit`**, **`.filter`**, **`.btn`** — platform controls, 3px radii, hairline
   borders, a reversed fill for the primary.
-- **`.feed`** — a 7.5rem meta gutter carrying kind and age, then the post, its
-  translation disclosure and its engagement counts.
+- **`.feed`** — one author, one timeline. Each row is a tweet: a 48px portrait,
+  the name with its verified mark, handle, age and evidence tag on the author
+  line; the post text with live links, mentions and hashtags; the translation
+  disclosure; engagement at the foot. The evidence tag stays on the row so a
+  social-looking post can never pass for a verified reset.
 
 ## Browser surfaces
 
@@ -238,6 +241,9 @@ is a comb, not a timetable.
 ## Explicitly not in this world
 
 No cards with shadows or radii. No gradient text. No glow. No glass. No
-illustration or photography: there is no owned imagery and none was invented.
-No emoji standing in for an icon — every glyph is an authored 24px stroke path
-in `public/js/dom.js`. No third-party font or asset is fetched at runtime.
+illustration or photography, with one exception: Tibo's public profile portrait
+ships at `public/img/tibo-avatar.jpg` and is used only to identify the author in
+the feed. It is third-party material, never treated as an owned asset, and it is
+served locally rather than fetched at runtime. No emoji standing in for an icon
+— every glyph is an authored 24px stroke path in `public/js/dom.js`. No
+third-party font or asset is fetched at runtime.

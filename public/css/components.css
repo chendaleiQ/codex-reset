@@ -791,42 +791,121 @@
   color: var(--line-cobalt);
 }
 
-/* --- feed ---------------------------------------------------------------- */
+/* --- feed: one author, one timeline, one tweet per row -------------------- */
 
 .feed {
   border-top: 1px solid var(--hair-strong);
 }
 
 .feed-item {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: var(--s3);
   padding: var(--s5) 0;
   border-bottom: 1px solid var(--hair);
-  display: grid;
-  grid-template-columns: 7.5rem minmax(0, 1fr);
-  gap: var(--s5);
 }
 
-.feed-meta {
+.feed-avatar {
+  display: block;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--wash);
+}
+
+.feed-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.feed-body {
+  min-width: 0;
+}
+
+.feed-head {
   display: flex;
-  flex-direction: column;
-  gap: 7px;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  flex-wrap: wrap;
+}
+
+.feed-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.feed-author:hover {
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+}
+
+.feed-verified {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--line-cobalt);
+  color: #fff;
+}
+
+.feed-verified .glyph {
+  width: 9px;
+  height: 9px;
+  stroke-width: 3.4;
+}
+
+.feed-handle,
+.feed-sep,
+.feed-time {
+  color: var(--ink-3);
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.feed-time {
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.feed-time:hover {
+  color: var(--ink-2);
+  text-decoration: underline;
 }
 
 .feed-kind {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  font-size: var(--t-meta);
-  font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--tone, var(--ink-4));
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tone, var(--ink-4)) 12%, transparent);
+  color: var(--tone, var(--ink-3));
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
 }
 
 .feed-kind::before {
   content: '';
-  width: 4px;
-  height: 13px;
-  border-radius: 1px;
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
   background: currentColor;
 }
 
@@ -848,42 +927,56 @@
 .feed-kind[data-kind='candidate'] {
   --tone: var(--line-teal);
 }
-.feed-kind[data-kind='context'] {
+.feed-kind[data-kind='codex'] {
+  --tone: var(--line-cobalt);
+}
+.feed-kind[data-kind='context'],
+.feed-kind[data-kind='other'] {
   --tone: var(--ink-4);
 }
 
-.feed-time {
-  font-size: var(--t-meta);
+.feed-reply {
+  margin-top: 2px;
   color: var(--ink-3);
-  font-variant-numeric: tabular-nums;
-}
-
-.feed-body {
-  min-width: 0;
+  font-size: 13px;
 }
 
 .feed-text {
   max-width: var(--measure);
+  margin-top: 2px;
   color: var(--ink);
+  font-size: 15px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .feed-text a {
   color: var(--line-cobalt);
 }
 
+.feed-text .feed-link {
+  text-decoration: none;
+}
+
+.feed-text .feed-link:hover {
+  text-decoration: underline;
+}
+
 .feed-foot {
   display: flex;
   align-items: center;
   gap: var(--s4);
-  margin-top: var(--s3);
+  margin-top: 10px;
   flex-wrap: wrap;
 }
 
 .feed-stats {
   display: flex;
-  gap: var(--s4);
-  font-size: var(--t-meta);
+  align-items: center;
+  gap: clamp(20px, 6vw, 56px);
   color: var(--ink-3);
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -894,18 +987,41 @@
 }
 
 .feed-stat .glyph {
-  width: 13px;
-  height: 13px;
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.5;
+}
+
+.feed-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  color: var(--line-cobalt);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.feed-open:hover {
+  text-decoration: underline;
+}
+
+.feed-open .glyph {
+  width: 12px;
+  height: 12px;
 }
 
 .translation {
+  margin-top: 6px;
   font-size: var(--t-meta);
   color: var(--ink-3);
 }
 
 .translation summary {
   cursor: pointer;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
 
 .translation summary:hover {
@@ -917,6 +1033,9 @@
   max-width: var(--measure);
   color: var(--ink-2);
   font-style: italic;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* --- plots --------------------------------------------------------------- */
