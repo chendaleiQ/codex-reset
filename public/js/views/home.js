@@ -91,7 +91,7 @@ export async function render(host, app) {
       if (state.feedError) subline.textContent = t('common.readError');
       return;
     }
-    const at = feed.newestPostAt ?? feed.posts[0]?.at ?? null;
+    const at = feed.latestPosts[0]?.at ?? feed.newestPostAt ?? null;
     const when = relativeTime(at, Date.now(), locale);
     const signal = feed.signal && feed.signal.active !== false ? feed.signal : null;
 
@@ -179,7 +179,7 @@ export async function render(host, app) {
 
   function paintPosts() {
     const feed = state.feed ? feedView(state.feed) : null;
-    const signature = JSON.stringify([feed?.posts, Boolean(state.feedError), kindFilter, postLimit]);
+    const signature = JSON.stringify([feed?.latestPosts, Boolean(state.feedError), kindFilter, postLimit]);
     if (signature === postsSignature) return;
     postsSignature = signature;
     clear(postHost);
@@ -187,7 +187,7 @@ export async function render(host, app) {
       postHost.append(el('p', { class: 'empty' }, state.feedError ? t('common.readError') : t('common.loading')));
       return;
     }
-    const rows = feed.posts.filter((post) => post.kind !== 'context').filter((post) => kindFilter === 'all' || post.kind === kindFilter);
+    const rows = feed.latestPosts.filter((post) => kindFilter === 'all' || post.kind === kindFilter);
     if (!rows.length) {
       postHost.append(el('p', { class: 'empty' }, t('radar.empty')));
       return;

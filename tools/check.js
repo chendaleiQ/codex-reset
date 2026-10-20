@@ -148,6 +148,28 @@ async function main() {
   const duplicatedFeed = feedView({ tweets: [day14], radar_context: [day14] });
   assert.equal(buildSeries({ feed: duplicatedFeed, now }).entries.length, 1);
 
+  // Latest posts include the visibility lane, even when no reset-related tweet changed.
+  const day15 = { id: '2112268918681485431', at: '2026-10-19T19:45:28.000Z',
+    text: "Day 15/ We're cooked", localized_text: '第 15 天/ 我们完蛋了', visibility_only: true };
+  const oldTweet = { id: '2112034063934742720', at: '2026-10-19T04:12:15.000Z', kind: 'limits', text: 'Credits refunded' };
+  const resetTweet = { id: 'reset-example', at: '2026-10-18T20:41:00.000Z', kind: 'reset', text: 'Limits reset' };
+  const liveFeed = feedView({ tweets: [resetTweet, oldTweet], radar_context: [day14, day15,
+    { ...oldTweet, kind: undefined, localized_text: '返还额度', translation_status: 'translated' },
+    { id: 'missing-date', text: 'Post without a date' }], signal: { active: false } });
+  assert.deepEqual(liveFeed.latestPosts.map(post => post.id), [day15.id, oldTweet.id, day14.id, resetTweet.id, 'missing-date']);
+  assert.equal(liveFeed.latestPosts[0].kind, 'other', 'Visibility-only posts cannot become reset evidence');
+  assert.equal(liveFeed.latestPosts[1].kind, 'limits', 'Classified source wins a duplicate');
+  assert.equal(liveFeed.latestPosts[1].localizedText, '返还额度', 'Keep translations from the other source');
+  assert.equal(liveFeed.latestPosts.filter(post => post.kind === 'reset').length, 1);
+  assert.equal(liveFeed.posts.length, 2, 'Latest-post display cannot expand the reset source lane');
+  assert.deepEqual(liveFeed.signal, { active: false });
+  assert.deepEqual(feedView({}).latestPosts, []);
+  const beforeContextUpdate = feedView({ tweets: [oldTweet], radar_context: [day14] });
+  const afterContextUpdate = feedView({ tweets: [oldTweet], radar_context: [day14, day15] });
+  assert.deepEqual(beforeContextUpdate.posts, afterContextUpdate.posts);
+  assert.notDeepEqual(beforeContextUpdate.latestPosts, afterContextUpdate.latestPosts);
+  assert.equal(afterContextUpdate.latestPosts[0].id, day15.id);
+
   let notifications = 0;
   const stop = subscribeTimeZone(() => notifications++);
   setTimeZone('Asia/Shanghai');
@@ -167,7 +189,7 @@ async function main() {
     const t = translator(locale);
     for (const key of ['timezone.label', 'calendar.todayEmpty', 'calendar.pastEmpty', 'calendar.activityRef', 'series.kind.empty', 'calendar.short.empty', 'calendar.basis.activity', 'calendar.basis.event', 'calendar.activityPending']) assert.notEqual(t(key), key);
   }
-  console.log('PASS: module syntax; timezone dates, local today and DST; effective-time grouping; multiple events; announcement confirmation; shared timezone formatting and subscriptions; activity/event projections; context-only updates and deduplication; bilingual states.');
+  console.log('PASS: module syntax; timezone dates, local today and DST; effective-time grouping; multiple events; announcement confirmation; shared timezone formatting and subscriptions; activity/event projections; context-only updates; latest-post ordering, deduplication and signal isolation; bilingual states.');
 
 }
 

@@ -132,9 +132,31 @@ function feedPost(post) {
   };
 }
 
+/** All visible posts share one display projection; reset evidence keeps its own source lane. */
+function latestFeedPosts(posts, context) {
+  const unique = new Map();
+  // Prefer the classified source when both lanes contain the same post.
+  for (const post of [...posts, ...context]) {
+    const key = post.id || post.url || `${post.at}\n${post.text}`;
+    const existing = unique.get(key);
+    if (existing) {
+      // The context copy may carry a translation absent from the signal copy.
+      unique.set(key, { ...existing,
+        localizedText: existing.localizedText || post.localizedText,
+        translationStatus: existing.translationStatus || post.translationStatus,
+        url: existing.url || post.url,
+      });
+    } else unique.set(key, post);
+  }
+  return [...unique.values()]
+    .map(post => post.kind === 'context' ? { ...post, kind: 'other' } : post)
+    .sort((a, b) => (parseTime(b.at) ?? -Infinity) - (parseTime(a.at) ?? -Infinity) || 0);
+}
+
 export function feedView(feed) {
   if (!feed) return null;
   const posts = (Array.isArray(feed.tweets) ? feed.tweets : []).map(feedPost);
+  const radarContext = (Array.isArray(feed.radar_context) ? feed.radar_context : []).map(feedPost);
   return {
     fetchedAt: feed.fetched_at ?? null,
     stale: Boolean(feed.stale),
@@ -144,7 +166,8 @@ export function feedView(feed) {
     profile: feed.profile ?? null,
     signal: feed.signal ?? null,
     posts,
-    radarContext: (Array.isArray(feed.radar_context) ? feed.radar_context : []).map(feedPost),
+    radarContext,
+    latestPosts: latestFeedPosts(posts, radarContext),
     banked: Array.isArray(feed.banked_observations) ? feed.banked_observations : [],
     events: Array.isArray(feed.events) ? feed.events : [],
   };
