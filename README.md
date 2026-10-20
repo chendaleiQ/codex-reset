@@ -58,6 +58,7 @@ public/js/
   views/                  四个页面
   i18n.js                 中英文文案
 public/data/series.json    活动早期公告的本地记录
+public/icon.svg            标签页图标，随浏览器明暗反转；icon-*.png、apple-touch-icon.png、favicon.ico 为应用图标
 tools/check.js            语法和日历回归检查
 ```
 

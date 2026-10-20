@@ -31,6 +31,26 @@ worth recording: the cobalt line sat in the same hue family as the ground, so
 every line colour sank into the background and the page read as one dirty blue
 wash. Signage is high contrast by trade. Keep it that way.
 
+## Mark
+
+The mark is the route at icon size: one line running edge to edge, one cobalt
+stop set into it. The stop is cut out of the line by a gap exactly as wide as
+the stroke, which is the whole difference between a station and a filled
+progress bar. There is nothing else in the frame; at 16px anything else is
+noise.
+
+It ships in the same two materials as the panels. The tab icon (`icon.svg`) is
+a backlit panel — `#101114` board, `#5b93ff` stop, `#f4f5f7` line at 55% — and
+inverts to the printed panel under `prefers-color-scheme: dark`, because the
+browser chrome around it has already chosen a side. The app icons
+(`icon-192`, `icon-512`, `apple-touch-icon`) are the backlit mark at full
+bleed, so iOS and Android can assert their own masks; `icon-maskable-512`
+keeps the line inside the 80% safe circle. `favicon.ico` carries the rounded
+board for old tab strips, and `safari-pinned-tab.svg` is the mono silhouette.
+The masthead carries the same grammar at 26px — a line, a stop, a gap cut from
+the board — with the stop set left of centre, because the page gives the line
+room to run on where a tab does not.
+
 ## Palette
 
 Colour is the network here, not decoration. Every value carries a meaning, and

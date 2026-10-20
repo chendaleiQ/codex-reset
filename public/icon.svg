@@ -1,8 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Codex Reset">
-  <rect width="64" height="64" rx="10" fill="#101a3d"/>
-  <line x1="10" y1="34" x2="54" y2="34" stroke="#f7f6f1" stroke-width="7" stroke-linecap="butt" opacity="0.4"/>
-  <line x1="10" y1="34" x2="34" y2="34" stroke="#2f6fe8" stroke-width="7"/>
-  <circle cx="10" cy="34" r="8" fill="#101a3d" stroke="#f7f6f1" stroke-width="4"/>
-  <circle cx="34" cy="34" r="6" fill="#2f6fe8" stroke="#101a3d" stroke-width="3"/>
-  <circle cx="54" cy="34" r="7" fill="#101a3d" stroke="#f7f6f1" stroke-width="3" stroke-dasharray="4 4"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Codex Reset">
+  <style>
+    /* Backlit panel: what a tab strip is, most of the time. */
+    .board { fill: #101114; }
+    .route { stroke: #f4f5f7; stroke-opacity: .55; }
+    .stop  { fill: #5b93ff; stroke: #101114; }
+    /* Printed panel, for dark browser chrome: the same mark, inverted materials. */
+    @media (prefers-color-scheme: dark) {
+      .board { fill: #f5f6f8; }
+      .route { stroke: #12161f; stroke-opacity: .7; }
+      .stop  { fill: #1b5fd9; stroke: #f5f6f8; }
+    }
+  </style>
+  <rect class="board" width="64" height="64" rx="14"/>
+  <line class="route" x1="-2" y1="32" x2="66" y2="32" stroke-width="6"/>
+  <rect class="stop" x="18" y="22" width="28" height="20" rx="2.5" stroke-width="6"/>
 </svg>

@@ -92,7 +92,7 @@ function applyTheme(theme) {
   button.setAttribute('aria-label', app.t(dark ? 'theme.toLight' : 'theme.toDark'));
   button.title = app.t(dark ? 'theme.toLight' : 'theme.toDark');
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', dark ? '#101114' : '#eef1f5');
+  if (meta) meta.setAttribute('content', dark ? '#101114' : '#f5f6f8');
 }
 
 function toggleTheme() {
