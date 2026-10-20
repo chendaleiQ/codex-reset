@@ -1,17 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Codex Reset">
-  <style>
-    /* Backlit panel: what a tab strip is, most of the time. */
-    .board { fill: #101114; }
-    .route { stroke: #f4f5f7; stroke-opacity: .55; }
-    .stop  { fill: #5b93ff; stroke: #101114; }
-    /* Printed panel, for dark browser chrome: the same mark, inverted materials. */
-    @media (prefers-color-scheme: dark) {
-      .board { fill: #f5f6f8; }
-      .route { stroke: #12161f; stroke-opacity: .7; }
-      .stop  { fill: #1b5fd9; stroke: #f5f6f8; }
-    }
-  </style>
-  <rect class="board" width="64" height="64" rx="14"/>
-  <line class="route" x1="-2" y1="32" x2="66" y2="32" stroke-width="6"/>
-  <rect class="stop" x="18" y="22" width="28" height="20" rx="2.5" stroke-width="6"/>
+  <defs>
+    <linearGradient id="plate" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fafd"/>
+      <stop offset="1" stop-color="#dde5f0"/>
+    </linearGradient>
+  </defs>
+  <!-- A printed plate: the same material as the timetable boards on the page. -->
+  <rect width="64" height="64" rx="15" fill="url(#plate)"/>
+  <rect x=".75" y=".75" width="62.5" height="62.5" rx="14.25" fill="none" stroke="rgba(18,21,29,.13)" stroke-width="1.5"/>
+  <!-- The cycle split in two: the run so far in graphite, the stretch left to the next reset in amber. -->
+  <circle cx="32" cy="32" r="19" fill="none" stroke="#f97316" stroke-width="6.5" stroke-linecap="round"
+          stroke-dasharray="39.8 119.4" transform="rotate(280 32 32)"/>
+  <circle cx="32" cy="32" r="19" fill="none" stroke="#1d222b" stroke-width="6.5" stroke-linecap="round"
+          stroke-dasharray="66.3 119.4" transform="rotate(60 32 32)"/>
 </svg>

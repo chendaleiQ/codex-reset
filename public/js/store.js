@@ -99,7 +99,6 @@ export function startStore(locale = state.locale) {
   void loadHealth();
 
   const tick = () => {
-    if (document.hidden) return;
     void loadFeed();
     void loadForecast();
     void loadStatus();

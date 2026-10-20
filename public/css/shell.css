@@ -43,36 +43,12 @@
 }
 
 .wordmark-mark {
-  position: relative;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   flex: none;
-  border-radius: 7px;
-  background: var(--reversed-bg);
-}
-
-/* The mark is the route at icon size: one line, one stop, one future. */
-.wordmark-mark::before {
-  content: '';
-  position: absolute;
-  left: 4px;
-  right: 4px;
-  top: 12px;
-  height: 2px;
-  background: var(--reversed-ink);
-  opacity: 0.45;
-}
-
-.wordmark-mark::after {
-  content: '';
-  position: absolute;
-  left: 4px;
-  top: 9px;
-  width: 10px;
-  height: 8px;
-  border-radius: 1px;
-  background: var(--line-cobalt);
-  box-shadow: 0 0 0 2px var(--reversed-bg);
+  border-radius: 6.5px; /* 28 * 15/64: the plate draws its own corners */
+  background: url('/icon.svg') center / 28px 28px no-repeat;
+  box-shadow: 0 1px 2px rgba(18, 22, 31, 0.16);
 }
 
 .wordmark-text {
@@ -219,6 +195,147 @@
   color: var(--ink);
 }
 
+/* --- reminder control ---------------------------------------------------- */
+
+.alerts {
+  position: relative;
+}
+
+.alerts-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--hair-strong);
+  border-radius: 7px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: border-color 130ms var(--ease), color 130ms var(--ease);
+}
+
+.alerts-button:hover {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+
+.alerts-button[data-state='on'] {
+  border-color: color-mix(in srgb, var(--line-cobalt) 55%, var(--hair-strong));
+  color: var(--line-cobalt);
+}
+
+.alerts-button[data-state='on']::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line-cobalt);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.alerts-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 20;
+  width: min(272px, calc(100vw - 24px));
+  padding: 12px;
+  background: var(--surface-raised);
+  border: 1px solid var(--hair-strong);
+  border-radius: 4px;
+  box-shadow: var(--lift);
+}
+
+.alerts-menu-title {
+  margin: 0 0 8px;
+  font-size: var(--t-meta);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.alerts-method {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  text-align: left;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: border-color 130ms var(--ease), background-color 130ms var(--ease);
+}
+
+.alerts-method:hover {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+
+.alerts-method[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--line-cobalt) 45%, var(--hair));
+  background: color-mix(in srgb, var(--line-cobalt) 8%, transparent);
+}
+
+.alerts-method[data-state='blocked'],
+.alerts-method[data-state='unsupported'] {
+  cursor: default;
+}
+
+.alerts-method-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.alerts-method-name {
+  font-size: var(--t-ui);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.alerts-method-note {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+
+.alerts-method-state {
+  margin-left: auto;
+  flex: none;
+  font-size: var(--t-meta);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.alerts-method[aria-pressed='true'] .alerts-method-state {
+  color: var(--line-cobalt);
+}
+
+.alerts-menu-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.alerts-test {
+  width: 100%;
+  margin-top: 10px;
+}
+
 .locale,
 .tz {
   position: relative;
@@ -333,13 +450,20 @@
 }
 
 .colophon-inner {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--s4) var(--s6);
-  align-items: baseline;
-  padding: var(--s7) var(--s6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+  padding: var(--s6) var(--s6) var(--s5);
   max-width: var(--page-max);
   margin: 0 auto;
+}
+
+.colophon-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3) var(--s5);
 }
 
 .colophon-mark {
@@ -362,16 +486,12 @@
   background: var(--line-cobalt);
 }
 
-.colophon-note {
-  font-size: var(--t-ui);
-  color: var(--ink-3);
-  max-width: 60ch;
-}
-
 .colophon-links {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s5);
+  gap: var(--s2) var(--s5);
+  margin-left: auto;
+  max-width: 100%;
   font-size: var(--t-meta);
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -388,14 +508,26 @@
   color: var(--ink);
 }
 
-.colophon-source {
-  grid-column: 1 / -1;
-  margin-top: var(--s5);
+.colophon-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2) var(--s6);
   padding-top: var(--s4);
   border-top: 1px solid var(--hair);
+}
+
+.colophon-note {
+  font-size: var(--t-ui);
+  color: var(--ink-3);
+}
+
+.colophon-source {
   font-size: var(--t-meta);
   color: var(--ink-4);
   max-width: none;
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- toast --------------------------------------------------------------- */
@@ -468,11 +600,17 @@
   }
 
   .colophon-inner {
-    grid-template-columns: minmax(0, 1fr);
     padding: var(--s6) var(--s4);
   }
 
+  .colophon-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s4);
+  }
+
   .colophon-links {
+    margin-left: 0;
     justify-content: flex-start;
   }
 }
@@ -483,6 +621,6 @@
   .masthead-tools { gap: 8px; }
   .status-chip { display: none; }
   .masthead-nav a { min-height: 40px; display: inline-flex; align-items: center; }
-  .theme-toggle, .locale-button, .tz-button { min-height: 40px; }
-  .theme-toggle { width: 40px; }
+  .theme-toggle, .alerts-button, .locale-button, .tz-button { min-height: 40px; }
+  .theme-toggle, .alerts-button { width: 40px; }
 }

@@ -9,8 +9,15 @@ const seenKey = 'codex-reset.lastNotifiedReset';
 
 export const supported = () => typeof Notification !== 'undefined';
 
+export function alertsStatus() {
+  if (!supported()) return 'unsupported';
+  if (Notification.permission === 'denied') return 'blocked';
+  if (Notification.permission !== 'granted') return 'off';
+  return read() ? 'on' : 'off';
+}
+
 export function alertsEnabled() {
-  return supported() && Notification.permission === 'granted' && read() === true;
+  return alertsStatus() === 'on';
 }
 
 function read() {
@@ -44,10 +51,24 @@ export function disableAlerts() {
 export function sendTest(t) {
   if (!alertsEnabled()) return false;
   try {
-    new Notification(t('push.title'), { body: t('push.granted'), tag: 'codex-reset-test' });
+    new Notification(t('push.title'), {
+      body: t('push.testBody'),
+      tag: 'codex-reset-test',
+      icon: '/icon-192.png',
+    });
     return true;
   } catch {
     return false;
+  }
+}
+
+/** Marks the current reset as already known, so enabling never alerts retroactively. */
+export function markSeen(lastResetAt) {
+  if (!lastResetAt) return;
+  try {
+    localStorage.setItem(seenKey, lastResetAt);
+  } catch {
+    /* storage disabled */
   }
 }
 
@@ -61,14 +82,14 @@ export function announceReset(t, lastResetAt) {
     previous = null;
   }
   if (previous === lastResetAt) return false;
-  try {
-    localStorage.setItem(seenKey, lastResetAt);
-  } catch {
-    /* storage disabled — fall through and notify anyway */
-  }
+  markSeen(lastResetAt);
   if (!previous) return false;
   try {
-    new Notification(t('push.title'), { body: t('home.verdict.today'), tag: 'codex-reset' });
+    new Notification(t('push.title'), {
+      body: t('push.resetBody'),
+      tag: 'codex-reset',
+      icon: '/icon-192.png',
+    });
     return true;
   } catch {
     return false;

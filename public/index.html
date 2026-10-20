@@ -10,7 +10,7 @@
 <link rel="icon" href="/icon.svg" type="image/svg+xml" sizes="any">
 <link rel="icon" href="/favicon.ico">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
-<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#1b5fd9">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#1d222b">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="preload" href="/fonts/hanken-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/tokens.css">
@@ -54,6 +54,10 @@
         </button>
         <ul class="locale-menu" id="locale-menu" role="listbox" aria-label="语言" hidden></ul>
       </div>
+      <div class="alerts">
+        <button type="button" class="alerts-button" id="alerts-button" aria-expanded="false" aria-haspopup="dialog" aria-controls="alerts-menu" aria-label="提醒" title="提醒"></button>
+        <div class="alerts-menu" id="alerts-menu" role="dialog" aria-label="提醒方式" hidden></div>
+      </div>
     </div>
     </div>
   </header>
@@ -62,16 +66,20 @@
 
   <footer class="colophon">
     <div class="colophon-inner">
-    <p class="colophon-mark">Codex Reset</p>
-    <p class="colophon-note" id="colophon-note">非官方项目，与 OpenAI 无关。数值仅供参考。</p>
-    <nav class="colophon-links" aria-label="页脚">
-      <a href="/timeline" data-i18n="nav.timeline">重置记录</a>
-      <a href="/status" data-i18n="nav.status">服务状态</a>
-      <a href="/vigil" data-i18n="nav.vigil">一起等重置</a>
-      <a href="https://status.openai.com/" rel="noopener nofollow" target="_blank">OpenAI Status</a>
-      <a href="https://x.com/thsottiaux" rel="noopener nofollow" target="_blank">@thsottiaux</a>
-    </nav>
-    <p class="colophon-source"><span data-i18n="footer.data">数据来源：Codex Reset 公开记录</span> · <span id="colophon-updated">—</span></p>
+      <div class="colophon-top">
+        <p class="colophon-mark">Codex Reset</p>
+        <nav class="colophon-links" aria-label="页脚">
+          <a href="/timeline" data-i18n="nav.timeline">重置记录</a>
+          <a href="/status" data-i18n="nav.status">服务状态</a>
+          <a href="/vigil" data-i18n="nav.vigil">一起等重置</a>
+          <a href="https://status.openai.com/" rel="noopener nofollow" target="_blank">OpenAI Status</a>
+          <a href="https://x.com/thsottiaux" rel="noopener nofollow" target="_blank">@thsottiaux</a>
+        </nav>
+      </div>
+      <div class="colophon-meta">
+        <p class="colophon-note" id="colophon-note">非官方项目，与 OpenAI 无关。数值仅供参考。</p>
+        <p class="colophon-source"><span data-i18n="footer.data">数据来源：Codex Reset 公开记录</span> · <span id="colophon-updated">—</span></p>
+      </div>
     </div>
   </footer>
 

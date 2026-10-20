@@ -33,23 +33,23 @@ wash. Signage is high contrast by trade. Keep it that way.
 
 ## Mark
 
-The mark is the route at icon size: one line running edge to edge, one cobalt
-stop set into it. The stop is cut out of the line by a gap exactly as wide as
-the stroke, which is the whole difference between a station and a filled
-progress bar. There is nothing else in the frame; at 16px anything else is
-noise.
+The mark is the cycle at icon size: one ring broken into two arcs and two gaps.
+Graphite runs 200° — the part of the interval already walked; amber runs 120° —
+the part left until the next reset. The two 20° breaks sit at 12 o'clock and at
+its mirror, so the ring never closes into a circle or reads as a spinner. There
+is nothing else in the frame; at 16px anything else is noise. The amber belongs
+to the mark alone — state keeps its own gold (`--warn`).
 
-It ships in the same two materials as the panels. The tab icon (`icon.svg`) is
-a backlit panel — `#101114` board, `#5b93ff` stop, `#f4f5f7` line at 55% — and
-inverts to the printed panel under `prefers-color-scheme: dark`, because the
-browser chrome around it has already chosen a side. The app icons
-(`icon-192`, `icon-512`, `apple-touch-icon`) are the backlit mark at full
-bleed, so iOS and Android can assert their own masks; `icon-maskable-512`
-keeps the line inside the 80% safe circle. `favicon.ico` carries the rounded
-board for old tab strips, and `safari-pinned-tab.svg` is the mono silhouette.
-The masthead carries the same grammar at 26px — a line, a stop, a gap cut from
-the board — with the stop set left of centre, because the page gives the line
-room to run on where a tab does not.
+It ships in one material: a printed plate (`#f8fafd → #dde5f0`, radius 15/64)
+with a hairline edge, graphite `#1d222b`, amber `#f97316`. The plate does not
+invert with `prefers-color-scheme`; a printed panel stays printed whatever the
+chrome around it does. The app icons (`icon-192`, `icon-512`,
+`apple-touch-icon`) are the same plate full bleed without the hairline, so iOS
+and Android can assert their own masks; `icon-maskable-512` keeps the ring
+inside the 80% safe circle. `favicon.ico` carries the rounded board for old tab
+strips, and `safari-pinned-tab.svg` is the mono silhouette. The masthead reuses
+`icon.svg` at 28px instead of redrawing it in CSS, so the tab and the header
+cannot drift apart.
 
 ## Palette
 

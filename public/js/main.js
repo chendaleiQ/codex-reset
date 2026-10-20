@@ -7,6 +7,7 @@ import { $, clear, el, icon, text } from './dom.js';
 import { detectLocale, LOCALE_LABEL, locales, normalizeLocale, translator } from './i18n.js';
 import { formatClock, formatDateTime } from './format.js';
 import { getState, setLocale, startStore, subscribe } from './store.js';
+import { alertsStatus, announceReset, disableAlerts, enableAlerts, markSeen, sendTest } from './notify.js';
 import { statusView } from './model.js';
 import { getTimeZone, getTimeZonePreference, localTimeZone, setTimeZone, subscribeTimeZone, zoneLabel, zoneShort } from './time-zone.js';
 
@@ -105,6 +106,82 @@ function toggleTheme() {
   applyTheme(next);
 }
 
+/* --------------------------------------------------------------- reminders */
+
+function renderAlertsButton() {
+  const button = $('#alerts-button');
+  if (!button) return;
+  const status = alertsStatus();
+  button.replaceChildren(icon('bell', { size: 15 }));
+  button.dataset.state = status === 'on' ? 'on' : 'off';
+  button.setAttribute('aria-pressed', String(status === 'on'));
+  button.setAttribute('aria-label', `${app.t('push.button')} · ${app.t(`push.state.${status}`)}`);
+  button.title = app.t('push.button');
+}
+
+function renderAlertsMenu() {
+  const menu = $('#alerts-menu');
+  if (!menu) return;
+  const status = alertsStatus();
+  menu.setAttribute('aria-label', app.t('push.menuTitle'));
+  const method = el(
+    'button',
+    {
+      type: 'button',
+      class: 'alerts-method',
+      'aria-pressed': String(status === 'on'),
+      dataset: { state: status },
+      onclick: toggleAlerts,
+    },
+    el(
+      'span',
+      { class: 'alerts-method-text' },
+      el('span', { class: 'alerts-method-name' }, app.t('push.method.browser')),
+      el('span', { class: 'alerts-method-note' }, app.t(status === 'blocked' ? 'push.blockedHint' : 'push.method.browserNote')),
+    ),
+    el('span', { class: 'alerts-method-state' }, app.t(`push.state.${status}`)),
+  );
+  menu.replaceChildren(
+    el('p', { class: 'alerts-menu-title' }, app.t('push.menuTitle')),
+    method,
+    el('p', { class: 'alerts-menu-note' }, app.t('push.onlyBrowser')),
+    el('p', { class: 'alerts-menu-note' }, app.t('push.limit')),
+    ...(status === 'on'
+      ? [el('button', { type: 'button', class: 'btn btn--quiet alerts-test', onclick: runAlertTest }, app.t('push.test'))]
+      : []),
+  );
+}
+
+async function toggleAlerts() {
+  const status = alertsStatus();
+  if (status === 'on') {
+    disableAlerts();
+    renderAlertsButton();
+    renderAlertsMenu();
+    app.toast(app.t('push.disabled'));
+    return;
+  }
+  if (status === 'unsupported' || status === 'blocked') {
+    app.toast(app.t(status === 'unsupported' ? 'push.unsupported' : 'push.blocked'));
+    return;
+  }
+  const result = await enableAlerts();
+  if (result === 'granted') markSeen(app.state.forecast?.last_reset_at);
+  renderAlertsButton();
+  renderAlertsMenu();
+  const message = {
+    granted: 'push.enabled',
+    blocked: 'push.blocked',
+    unsupported: 'push.unsupported',
+    dismissed: 'push.dismissed',
+  }[result];
+  app.toast(app.t(message ?? 'push.dismissed'));
+}
+
+function runAlertTest() {
+  app.toast(app.t(sendTest(app.t) ? 'push.testSent' : 'push.testFailed'));
+}
+
 /* ----------------------------------------------------------------- the shell */
 
 function renderNav(path) {
@@ -169,6 +246,8 @@ function applyLocale(next) {
   document.querySelectorAll('[data-i18n]').forEach((node) => text(node, app.t(node.dataset.i18n)));
   applyTheme(activeTheme ?? readTheme());
   renderTimeZoneControl();
+  renderAlertsButton();
+  if ($('#alerts-menu')?.hasAttribute('hidden') === false) renderAlertsMenu();
   renderUpdated();
 }
 
@@ -311,6 +390,7 @@ function boot() {
   applyLocale(locale);
 
   const menus = [
+    { selector: '.alerts', button: $('#alerts-button'), menu: $('#alerts-menu'), onOpen: renderAlertsMenu },
     { selector: '.locale', button: $('#locale-button'), menu: $('#locale-menu') },
     { selector: '.tz', button: $('#timezone-button'), menu: $('#timezone-menu') },
   ];
@@ -324,6 +404,7 @@ function boot() {
       const open = entry.menu.hasAttribute('hidden');
       menus.forEach(closeMenu);
       if (open) {
+        entry.onOpen?.();
         entry.menu.removeAttribute('hidden');
         entry.button.setAttribute('aria-expanded', 'true');
       }
@@ -341,13 +422,17 @@ function boot() {
 
   renderNav(currentPath());
   renderLocaleMenu();
+  renderAlertsButton();
   renderStatusChip();
   renderClock();
 
   subscribe((slice) => {
     if (slice === 'status') renderStatusChip();
     if (slice === 'forecast' || slice === 'locale') renderClock();
-    if (slice === 'forecast') renderUpdated();
+    if (slice === 'forecast') {
+      renderUpdated();
+      announceReset(app.t, app.state.forecast?.last_reset_at);
+    }
   });
 
   startStore(locale);
