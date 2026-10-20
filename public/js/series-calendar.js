@@ -92,7 +92,12 @@ export function createSeriesCalendar(host, { locale, t }) {
     toolbar.replaceChildren(
       el('h3', { class: 'calendar-month' }, monthLabel.format(dateOf(`${month}-01`))),
       el('div', { class: 'calendar-controls' },
-        el('button', { type: 'button', class: 'calendar-current', onclick: () => { selected = closestToday(); month = monthOf(selected); paint(); } }, t(series.todayDate >= series.startDate && series.todayDate <= series.endDate ? (basis === 'activity' ? 'calendar.activityToday' : 'calendar.today') : 'calendar.latest')),
+        el('button', {
+          type: 'button',
+          class: 'calendar-current',
+          ...(basis === 'activity' ? { title: t('calendar.activityTodayHint') } : {}),
+          onclick: () => { selected = closestToday(); month = monthOf(selected); paint(); },
+        }, t(series.todayDate >= series.startDate && series.todayDate <= series.endDate ? 'calendar.jumpToday' : 'calendar.latest')),
         el('button', { type: 'button', class: 'icon-btn', 'aria-label': t('calendar.previous'), disabled: index === 0, onclick: () => changeMonth(months[index - 1]) }, icon('arrow', { className: 'glyph arrow-back' })),
         el('button', { type: 'button', class: 'icon-btn', 'aria-label': t('calendar.next'), disabled: index === months.length - 1, onclick: () => changeMonth(months[index + 1]) }, icon('arrow')),
       ),

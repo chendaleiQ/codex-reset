@@ -57,6 +57,18 @@ export function zoneLabel(timeZone = getTimeZone(), locale = 'zh', at = Date.now
   return `${names[timeZone] || timeZone} (${zoneOffset(timeZone, at)})`;
 }
 
+/** The compact masthead label: no minutes in the offset, no parentheses. */
+export function zoneShort(timeZone = getTimeZone(), locale = 'zh', at = Date.now()) {
+  const names = locale === 'zh'
+    ? { 'Asia/Shanghai': '北京时间', 'America/Los_Angeles': '太平洋时间', UTC: 'UTC' }
+    : { 'Asia/Shanghai': 'Beijing', 'America/Los_Angeles': 'US Pacific', UTC: 'UTC' };
+  const offset = zoneOffset(timeZone, at)
+    .replace(':00', '')
+    .replace(/^UTC([+-])0(\d)$/, 'UTC$1$2');
+  if (offset === 'UTC' || offset === 'UTC+0' || offset === 'UTC-0') return names[timeZone] || 'UTC';
+  return `${names[timeZone] || timeZone} ${offset}`;
+}
+
 /** Resolve a civil midnight, including DST, for the activity's Pacific boundaries. */
 export function activityMidnight(date) {
   const target = Date.parse(`${date}T00:00:00Z`);

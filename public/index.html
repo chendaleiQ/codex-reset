@@ -39,6 +39,14 @@
         <span class="status-chip-text">—</span>
       </a>
       <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false"></button>
+      <div class="tz">
+        <button type="button" class="tz-button" id="timezone-button" aria-expanded="false" aria-haspopup="listbox" aria-describedby="timezone-hint">
+          <span id="timezone-label">UTC</span>
+          <svg class="glyph" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+        <ul class="tz-menu" id="timezone-menu" role="listbox" aria-label="显示时区" hidden></ul>
+        <span class="sr-only" id="timezone-hint" data-i18n="timezone.hint">用于具体时间；活动日按 Tibo 的日序排列</span>
+      </div>
       <div class="locale">
         <button type="button" class="locale-button" id="locale-button" aria-expanded="false" aria-haspopup="listbox">
           <span id="locale-label">中文</span>
@@ -47,11 +55,6 @@
         <ul class="locale-menu" id="locale-menu" role="listbox" aria-label="语言" hidden></ul>
       </div>
     </div>
-    </div>
-    <div class="time-context">
-      <label for="timezone-select" data-i18n="timezone.label">显示时区</label>
-      <select id="timezone-select" aria-describedby="timezone-hint"></select>
-      <span id="timezone-hint" data-i18n="timezone.hint">用于具体时间；活动日按 Tibo 的日序排列</span>
     </div>
   </header>
 

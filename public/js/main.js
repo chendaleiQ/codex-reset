@@ -8,7 +8,7 @@ import { detectLocale, LOCALE_LABEL, locales, normalizeLocale, translator } from
 import { formatClock, formatDateTime } from './format.js';
 import { getState, setLocale, startStore, subscribe } from './store.js';
 import { statusView } from './model.js';
-import { getTimeZone, getTimeZonePreference, localTimeZone, setTimeZone, subscribeTimeZone, zoneLabel } from './time-zone.js';
+import { getTimeZone, getTimeZonePreference, localTimeZone, setTimeZone, subscribeTimeZone, zoneLabel, zoneShort } from './time-zone.js';
 
 /**
  * Overview and reset history are the primary routes. Service status and
@@ -193,14 +193,22 @@ function renderStatusChip() {
 let clockSignature = '';
 
 function renderTimeZoneControl() {
-  const select = $('#timezone-select');
-  if (!select) return;
+  const button = $('#timezone-button');
+  const menu = $('#timezone-menu');
+  if (!button || !menu) return;
   const selected = getTimeZonePreference();
   const zones = [...new Set(['local', 'Asia/Shanghai', 'America/Los_Angeles', 'UTC', selected])];
-  select.replaceChildren(...zones.map((zone) => el('option', { value: zone },
-    zone === 'local' ? app.t('timezone.local', { zone: zoneLabel(localTimeZone(), app.locale) }) : zoneLabel(zone, app.locale),
-  )));
-  select.value = selected;
+  text($('#timezone-label'), zoneShort(getTimeZone(), app.locale));
+  button.title = app.t('timezone.hint');
+  button.setAttribute('aria-label', `${app.t('timezone.label')}: ${zoneShort(getTimeZone(), app.locale)}`);
+  menu.setAttribute('aria-label', app.t('timezone.label'));
+  menu.replaceChildren(...zones.map((zone) =>
+    el('li', { role: 'option', 'aria-selected': String(zone === selected) },
+      el('button', { type: 'button', dataset: { zone }, onclick: () => setTimeZone(zone) },
+        zone === 'local' ? app.t('timezone.local', { zone: zoneLabel(localTimeZone(), app.locale) }) : zoneLabel(zone, app.locale),
+      ),
+    ),
+  ));
 }
 
 function renderUpdated() {
@@ -295,7 +303,6 @@ function boot() {
   app.toast = makeToast();
   applyTheme(readTheme());
   $('#theme-toggle')?.addEventListener('click', toggleTheme);
-  $('#timezone-select')?.addEventListener('change', (event) => setTimeZone(event.target.value));
   subscribeTimeZone(() => { renderTimeZoneControl(); renderClock(); renderUpdated(); });
   setInterval(() => { if (!document.hidden) renderClock(); }, 30_000);
 
@@ -303,29 +310,33 @@ function boot() {
   const locale = fromPath ?? detectLocale();
   applyLocale(locale);
 
-  const menu = $('#locale-menu');
-  const button = $('#locale-button');
-  button?.addEventListener('click', () => {
-    const open = menu.hasAttribute('hidden');
-    if (open) menu.removeAttribute('hidden');
-    else menu.setAttribute('hidden', '');
-    button.setAttribute('aria-expanded', String(open));
-  });
+  const menus = [
+    { selector: '.locale', button: $('#locale-button'), menu: $('#locale-menu') },
+    { selector: '.tz', button: $('#timezone-button'), menu: $('#timezone-menu') },
+  ];
+  const closeMenu = (entry) => {
+    entry.menu?.setAttribute('hidden', '');
+    entry.button?.setAttribute('aria-expanded', 'false');
+  };
+  for (const entry of menus) {
+    entry.button?.addEventListener('click', () => {
+      if (!entry.menu) return;
+      const open = entry.menu.hasAttribute('hidden');
+      menus.forEach(closeMenu);
+      if (open) {
+        entry.menu.removeAttribute('hidden');
+        entry.button.setAttribute('aria-expanded', 'true');
+      }
+    });
+    entry.menu?.addEventListener('click', () => closeMenu(entry));
+  }
   document.addEventListener('click', (event) => {
-    if (!event.target.closest?.('.locale')) {
-      menu?.setAttribute('hidden', '');
-      button?.setAttribute('aria-expanded', 'false');
+    for (const entry of menus) {
+      if (!event.target.closest?.(entry.selector)) closeMenu(entry);
     }
   });
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      menu?.setAttribute('hidden', '');
-      button?.setAttribute('aria-expanded', 'false');
-    }
-  });
-  menu?.addEventListener('click', () => {
-    menu.setAttribute('hidden', '');
-    button?.setAttribute('aria-expanded', 'false');
+    if (event.key === 'Escape') menus.forEach(closeMenu);
   });
 
   renderNav(currentPath());
