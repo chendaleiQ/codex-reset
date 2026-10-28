@@ -17,7 +17,8 @@
 
 ### 运维注意（重要）
 
-- 源站 nginx 仍是 Let's Encrypt 证书，**2027-01-17 到期**。现在续期要走 Cloudflare 的 DNS（不再是阿里云），或者更省事：换成 **Cloudflare Origin CA 证书（15 年）**，装到 nginx 后彻底不用管。
+- 源站证书已换成 **Cloudflare Origin CA**（2026-10-28 装好，有效期到 **2041-10-24**，15 年）：`/www/server/panel/vhost/cert/codex-reset.opentunnel.asia/{fullchain.pem,privkey.pem}`，原 Let's Encrypt 证书备份在同目录 `backup-le-20261028163007/`，新证书另存一份在 `/root/cf-origin-cert/`。
+- 已把该域名从 acme.sh 的续期列表里移除（`acme.sh --remove -d codex-reset.opentunnel.asia --ecc`），避免 2027 年续期失败时覆盖文件。**注意**：`baohu.opentunnel.asia` 仍在 acme.sh 里，且它用的是阿里云 DNS 插件——NS 迁到 Cloudflare 后这个域名的续期会失败，需要另行处理。
 - 隧道服务随机器自启；排查命令：`systemctl status cloudflared`、`journalctl -u cloudflared -n 50`。
 - 发布流程没变：GitHub Actions / `npm run deploy` 仍然是改 nginx 后面的 blue-green 容器，Cloudflare 与隧道不用动。
 - Cloudflare 免费版会缓存静态资源；HTML 是 `DYNAMIC` 不缓存，发布后立刻生效。
