@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      SERVER_HOST: 101.133.168.66
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
       SERVER_USER: root
       SSH_PORT: '22'
     steps:

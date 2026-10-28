@@ -32,7 +32,7 @@
 
 1. 注册 Cloudflare，添加站点 `opentunnel.asia`。
 2. 到阿里云/万网把域名的 NS 改成 Cloudflare 给的两条 nameserver。
-3. Cloudflare DNS 里保留 `codex-reset` 的 A 记录指向 `101.133.168.66`，**代理开关打开（橙色云朵）**。
+3. Cloudflare DNS 里保留 `codex-reset` 记录指向源站，**代理开关打开（橙色云朵）**。
 4. SSL/TLS 模式选 **Full (strict)**（服务器上已有 Let's Encrypt 证书，可直接用）。
 5. 打开 `Always Use HTTPS`。
 

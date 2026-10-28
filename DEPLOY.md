@@ -1,6 +1,6 @@
 # 服务器部署
 
-使用 baohu 同一台服务器 `101.133.168.66`，独立站点 `codex-reset.opentunnel.asia`。
+使用同一台服务器（地址在 `deploy/.env.local` 或仓库 secret `SERVER_HOST` 里，不写进仓库），独立站点 `codex-reset.opentunnel.asia`。
 Node 22 容器只监听本机，由宝塔 Nginx 提供 HTTPS；不需要安装 npm 依赖或执行前端构建。
 
 ## GitHub Actions 自动发布
@@ -28,7 +28,7 @@ bash deploy/remote-deploy.sh logs
 bash deploy/remote-deploy.sh rollback
 ```
 
-默认使用 `root@101.133.168.66` 和 `~/.ssh/sketchive_deploy_ed25519`。
+默认使用 `root@$SERVER_HOST`（见上）和 `~/.ssh/sketchive_deploy_ed25519`。
 可用 `SERVER_HOST`、`SERVER_USER`、`SSH_PORT`、`SSH_KEY`、`SSH_KNOWN_HOSTS_FILE` 覆盖连接配置，密钥不进入源码或部署包。
 
 发布包含当前工作区的运行文件。`RELEASE.json` 记录基础 Git 提交、是否有未提交修改和每个文件的 SHA-256；
@@ -45,7 +45,7 @@ bash deploy/remote-deploy.sh rollback
 
 ## 首次接入
 
-1. DNS 添加 `codex-reset` 的 A 记录，值为 `101.133.168.66`。
+1. DNS 添加 `codex-reset` 记录指向源站（现在是 Cloudflare Tunnel 的 CNAME，见 docs/SEO.md）。
 2. 执行发布脚本，先启动本机服务。未配置站点时脚本明确提示仅容器就绪。
 3. 签发 `codex-reset.opentunnel.asia` 的证书，安装到
    `/www/server/panel/vhost/cert/codex-reset.opentunnel.asia/`，文件名为 `fullchain.pem` 和 `privkey.pem`。

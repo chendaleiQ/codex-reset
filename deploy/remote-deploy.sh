@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-SERVER_HOST="${SERVER_HOST:-101.133.168.66}"
+LOCAL_ENV="$(cd "$(dirname "$0")" && pwd)/.env.local"
+if [[ -f "$LOCAL_ENV" ]]; then set -a; . "$LOCAL_ENV"; set +a; fi
+SERVER_HOST="${SERVER_HOST:-}"
+if [[ -z "$SERVER_HOST" ]]; then
+  echo '缺少 SERVER_HOST：复制 deploy/.env.local.example 为 deploy/.env.local 并填入服务器地址（该文件已被 gitignore）。' >&2
+  exit 2
+fi
 SERVER_USER="${SERVER_USER:-root}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/sketchive_deploy_ed25519}"
 SSH_PORT="${SSH_PORT:-22}"
