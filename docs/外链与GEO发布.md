@@ -111,3 +111,20 @@ AI 搜索的引用来源就三块：Google/Bing 索引、自家爬虫库、第�
 - 不要在别人的求助帖里只丢链接不回答问题。
 - 不要买外链、不要用互点群。
 - 不要改标题反复重发。
+
+---
+
+## 已发布记录
+
+| 日期 | 平台 | 链接 | 状态 |
+| --- | --- | --- | --- |
+| 2026-10-28 | X（中文主贴 + 英文回复串） | https://x.com/chendaleiQi/status/2115356792477913280 | 已发布 |
+| 2026-10-28 | Reddit r/SideProject | https://www.reddit.com/r/SideProject/comments/1xhiez3/i_built_a_tracker_for_codex_quota_resets_that/ | 已发布 |
+
+未发布：V2EX、linux.do（都需要邀请码才能注册/登录）；知乎、即刻可以后续补。
+
+### 后续动作
+
+- 明天回一次 X 帖的评论；Reddit 帖有回复就答，别只丢链接。
+- 一周后看：Google `site:` 是否出现、Bing 是否收录、ChatGPT / Perplexity 问固定问题时是否提到。
+- 服务器日志里盯 referrer 出现 `x.com` / `t.co` / `reddit.com` 的记录，那是外链真正带来人的证据。
