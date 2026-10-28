@@ -475,6 +475,10 @@ function vigilBlock(locale, snap) {
 /* --------------------------------------------------------- permanent block */
 
 function guideSection(locale) {
+  const planCard = tag('a', { class: 'guide-card', href: locale === 'en' ? '/en/plan' : '/plan' }, [
+    tag('span', { class: 'guide-card-title' }, esc(locale === 'en' ? 'The 28-day run, day by day' : '28 天更新计划：Day 1–28 逐日对照')),
+    tag('span', { class: 'guide-card-tagline' }, esc(locale === 'en' ? 'Every day of the run, and what landed' : '每一天发布了什么，一眼对上')),
+  ].join(''));
   const cards = [
     ['codex-reset', locale === 'en' ? 'What a reset actually means' : '三类重置到底有什么区别'],
     ['codex-5-hour-limit', locale === 'en' ? 'How the 5-hour limit is clocked' : '5 小时限额怎么算'],
@@ -492,7 +496,7 @@ function guideSection(locale) {
   return tag('section', { class: 'seo-guide', id: 'seo-guide', 'aria-labelledby': 'seo-guide-title' }, [
     tag('h2', { id: 'seo-guide-title' }, esc(label(locale, 'guidesTitle'))),
     tag('p', { class: 'seo-guide-lead' }, esc(label(locale, 'guidesLead'))),
-    tag('div', { class: 'guide-cards' }, items),
+    tag('div', { class: 'guide-cards' }, planCard + items),
     tag('h3', {}, esc(label(locale, 'faqTitle'))),
     tag('dl', { class: 'ssr-faq' }, faq.map((item) => tag('dt', {}, esc(item.q)) + tag('dd', {}, esc(item.a))).join('')),
   ].join(''));

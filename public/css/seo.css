@@ -535,3 +535,9 @@
 .plan-empty td {
   color: var(--ink-4);
 }
+
+.plan-table td:last-child {
+  white-space: nowrap;
+  color: var(--ink-3);
+  font-size: var(--t-meta);
+}
