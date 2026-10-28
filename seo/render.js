@@ -1309,7 +1309,11 @@ function archiveMonthDocument({ origin, pathname }) {
       tag('span', {}, esc(monthLabel(month, locale))),
     ].join('')),
     tag('h1', {}, esc(title)),
-    tag('p', { class: 'doc-lead' }, esc(`${label(locale, 'archiveResets')}: ${resetCount} / ${records.length}`)),
+    tag('p', { class: 'doc-lead' }, esc(
+      locale === 'en'
+        ? `${monthLabel(month, 'en')}: ${records.length} records, ${resetCount} of them reset announcements.`
+        : `${monthLabel(month, 'zh')}共记录 ${records.length} 条，其中重置 ${resetCount} 条。`,
+    )),
     tag('table', { class: 'ssr-table' }, [
       tag('thead', {}, tag('tr', {}, [
         tag('th', { scope: 'col' }, esc(locale === 'en' ? 'Time (PT)' : '时间（北京时间）')),
