@@ -393,6 +393,270 @@ const ARTICLES = {
       ],
     },
   },
+  'codex-quota-run-out': {
+    zh: {
+      title: 'Codex 额度用完了怎么办？三层限制的判断顺序',
+      description:
+        'Codex 额度用完时，先分清是 5 小时窗口、每周额度还是服务故障，再决定等窗口、用备用额度还是等全局重置；附上让额度撑得更久的几种做法。',
+      h1: 'Codex 额度用完了怎么办？',
+      lead: '同样是「用不了」，原因可能是三种不同的限制。判断对了，处理方式完全不同——有的只需要等两个小时，有的是这一周的额度真的见底了。',
+      sections: [
+        {
+          h2: '一、先分清卡在哪一层',
+          paragraphs: [
+            '第一层是 5 小时滚动窗口：从你在这个窗口里的第一次请求开始计时，5 小时后自动恢复。大多数「突然不能用了」都是这一层，等一等就好。',
+            '第二层是每周额度：按周结算，用完就要等周额度刷新。它和 5 小时窗口分开计算，把 5 小时窗口等到也不一定能继续用。',
+            '第三层其实不是额度问题：如果报错是限流、超时或服务异常，先去看 OpenAI Status 的服务状态，再考虑额度。',
+          ],
+          list: [
+            '桌面端或网页版：设置 → 用量，能看到当前窗口的剩余比例与到期时间。',
+            'CLI：输入 /usage，同时给出当前用量和窗口信息。',
+            '本站的服务状态页把 Codex 各入口的官方状态和重置记录放在一起，方便对照。',
+          ],
+        },
+        {
+          h2: '二、三种立刻能做的事',
+          paragraphs: [
+            '等窗口：最稳、零成本，代价是时间。把不着急的活挪到窗口刷新之后，通常比反复重试划算。',
+            '用备用额度：账号里有可用重置时，可以在「设置 → 用量」里手动使用，或者在 CLI 里输入 /usage 选择 Redeem reset。一次完整重置会同时刷新 5 小时窗口和每周额度。',
+            '等全局重置：OpenAI 会不定期对所有人统一重置。本站首页给出最近一次已确认重置和未来 24 / 48 小时的概率，概率是公开信号与历史节奏的推算，不是承诺。',
+          ],
+        },
+        {
+          h2: '三、让额度撑得更久的四个做法',
+          list: [
+            '把任务拆小：一次只改几行的请求，和长时间自主运行的代理任务，消耗完全不在一个量级。',
+            '控制上下文：反复把大文件读进上下文会显著增加消耗，先定位再读。',
+            '别在窗口末尾冲刺：窗口到期会重新给满，临近到期时把重活留到下一个窗口更划算。',
+            '减少无效重试：同一个失败任务连着重试，往往比换一个更小的尝试更费。',
+          ],
+        },
+        {
+          h2: '四、什么时候该考虑换方案',
+          paragraphs: [
+            '如果一周里多次在窗口内用完，说明使用强度已经超出当前方案，靠等窗口和备用额度只是拖时间。这时候值得对比更高一档的方案，或者把一部分工作交给成本更低的模型。',
+            '如果只是偶尔一次，等窗口或等一次全局重置通常就够了——不必为偶发的峰值升级。',
+          ],
+        },
+      ],
+      faq: [
+        {
+          q: '额度用完会立刻恢复吗？',
+          a: '不会。5 小时窗口要等到它自己到期才恢复，未用完的部分也不会结转。每周额度同理，要等周额度刷新。',
+        },
+        {
+          q: '备用额度能救急吗？',
+          a: '能，但需要你手动使用：设置 → 用量里选择可用重置，或 CLI 里 /usage 选择 Redeem reset。它不会在后台自动生效。',
+        },
+        {
+          q: '等全局重置和现在升级，哪个划算？',
+          a: '看频率。偶发一次用完，等窗口或等一次全局重置就够了；如果每周都在等，说明额度本身不够，升级或拆分任务更实际。',
+        },
+      ],
+      related: ['codex-reset', 'codex-5-hour-limit'],
+      sources: [
+        { label: 'OpenAI Help Center：Codex 重置如何运作', url: 'https://help.openai.com/zh-hans-cn/articles/20001498-how-resets-work-in-codex' },
+        { label: 'OpenAI Status：服务状态', url: 'https://status.openai.com/' },
+      ],
+    },
+    en: {
+      title: 'Codex Quota Ran Out? Which Limit Actually Stopped You',
+      description:
+        'When Codex runs out of quota, work out whether it is the 5-hour window, the weekly allowance or a service incident — then decide whether to wait, redeem a banked reset or watch for a global reset.',
+      h1: 'Codex quota ran out — what now?',
+      lead: '“I can’t use it” can mean three different things. Getting the layer right changes the answer completely: one of them is a two-hour wait, another is a weekly allowance that is genuinely spent.',
+      sections: [
+        {
+          h2: '1. Work out which layer stopped you',
+          paragraphs: [
+            'The first layer is the rolling 5-hour window: it starts with your first request inside that window and refills five hours later. Most “it suddenly stopped working” cases are this layer, and waiting is the whole fix.',
+            'The second layer is the weekly allowance. It is metered separately, so waiting out the 5-hour window does not give you more if the week is already spent.',
+            'The third case is not a quota problem at all: if the error mentions rate limiting, timeouts or a service incident, check OpenAI Status before you assume it is your allowance.',
+          ],
+          list: [
+            'Desktop or web: Settings → Usage shows the remaining share and when the window ends.',
+            'CLI: /usage returns the same figures, plus the redeem control.',
+            'This site’s status page pairs each Codex surface’s official state with the reset records.',
+          ],
+        },
+        {
+          h2: '2. Three things you can do right now',
+          paragraphs: [
+            'Wait for the window. Free and reliable; the only cost is time. Moving non-urgent work past the refresh usually beats retrying.',
+            'Redeem a banked reset. If your account has one, open Settings → Usage and use the available reset, or run /usage in the CLI and choose Redeem reset. A full reset renews both the 5-hour window and the weekly allowance.',
+            'Watch for a global reset. OpenAI resets everyone from time to time; the overview page shows the last verified reset and the 24h/48h probability — an estimate from public signals and history, not a promise.',
+          ],
+        },
+        {
+          h2: '3. Four ways to make the allowance last longer',
+          list: [
+            'Shrink the tasks: a request that edits a few lines and a long autonomous agent run are not the same cost at all.',
+            'Control context: re-reading large files into context adds up — locate first, then read.',
+            'Do not sprint at the end of a window: the window refills anyway, so heavy work is better placed after the refresh.',
+            'Avoid blind retries: hammering the same failing task usually costs more than a smaller second attempt.',
+          ],
+        },
+        {
+          h2: '4. When to change plan instead of waiting',
+          paragraphs: [
+            'If you hit the wall several times a week, your usage has outgrown the plan and waiting only buys time. That is the point to compare the next tier, or to move part of the work to a cheaper model.',
+            'If it happens once in a while, waiting for the window or a global reset is enough — do not upgrade for a one-off spike.',
+          ],
+        },
+      ],
+      faq: [
+        {
+          q: 'Does quota come back immediately?',
+          a: 'No. The 5-hour window has to expire, and unused allowance does not carry over. The weekly allowance works the same way.',
+        },
+        {
+          q: 'Can a banked reset cover the gap?',
+          a: 'Yes, but you have to redeem it yourself: Settings → Usage shows an available reset, or run /usage in the CLI and choose Redeem reset. It never applies in the background.',
+        },
+        {
+          q: 'Is it cheaper to wait for a global reset or upgrade now?',
+          a: 'Check the frequency. An occasional dry spell is worth waiting out; if you wait every week, the plan is too small and splitting the work or upgrading is the real fix.',
+        },
+      ],
+      related: ['codex-reset', 'codex-5-hour-limit'],
+      sources: [
+        { label: 'OpenAI Help Center: How resets work in Codex', url: 'https://help.openai.com/en/articles/20001498-how-resets-work-in-codex' },
+        { label: 'OpenAI Status', url: 'https://status.openai.com/' },
+      ],
+    },
+  },
+
+  'codex-reset-alert': {
+    zh: {
+      title: '怎么第一时间知道 Codex 重置了？三种提醒方式对比',
+      description:
+        'Codex 重置没有固定时间，靠隔一会儿刷一次 X 很容易错过。对比三种提醒方式：本站浏览器通知、关注 Tibo 的 X 账号、第三方转发机器人，以及各自适合谁。',
+      h1: '怎么第一时间知道 Codex 重置了？',
+      lead: '全局重置往往在很短时间内被用掉。与其隔一会儿刷一次，不如让提醒来找你。',
+      sections: [
+        {
+          h2: '一、为什么值得专门设一个提醒',
+          paragraphs: [
+            '重置公告出现和额度真正生效之间通常只有很短的时间差，而额度是先到先得的体验：早半小时知道，就多半小时的窗口。',
+            '重置又没有固定时间表——可能来自故障补偿、产品发布或活动，历史上从连续几天到两周以上一次都出现过。靠猜不如靠通知。',
+          ],
+        },
+        {
+          h2: '二、本站的浏览器通知',
+          paragraphs: [
+            '打开本站，点页头右上角的铃铛按钮，浏览器询问通知权限时选择允许，按钮状态变成「已开启」即可。之后检测到新的重置公告会弹出通知。',
+            '限制要说清楚：本站是只读镜像，没有服务端推送，通知由页面自己的轮询触发。所以需要这个页面在浏览器里保持打开（可以放在后台标签页）；关掉浏览器或设备休眠时不会响。',
+            '适合：工作时本来就开着这个页面的人。免费、不用注册、不收集账号信息。',
+          ],
+        },
+        {
+          h2: '三、关注原始信息源',
+          paragraphs: [
+            '绝大多数重置来自 Codex 负责人 Tibo（@thsottiaux）在 X 上的帖子。关注他并打开账号通知，是最直接的方式，也比任何转发都早。',
+            '代价是噪音：他的账号同时发布产品更新和日常动态，重置只占其中一部分。',
+          ],
+        },
+        {
+          h2: '四、第三方转发',
+          paragraphs: [
+            '社区里有把重置公告转发到 Telegram、Discord 或企业微信的机器人，适合团队统一接收。',
+            '要注意时延和可靠性：转发链路多一跳，可能更慢；上游接口一变，转发也可能悄悄停掉。把它当作补充而不是唯一来源。',
+          ],
+        },
+        {
+          h2: '五、怎么组合最省事',
+          paragraphs: [
+            '个人：本站通知 + 关注 Tibo 账号，两个都免费，覆盖「页面开着」和「不在电脑前」两种场景。',
+            '团队：一个人盯本站并把消息转到群里，比每个人都开一遍通知更高效。',
+          ],
+        },
+      ],
+      faq: [
+        {
+          q: '本站的通知需要注册账号吗？',
+          a: '不需要，也不会上传任何账号信息。通知只在你的浏览器本地授权和存储。',
+        },
+        {
+          q: '关掉网页还会收到提醒吗？',
+          a: '不会。通知依赖页面自身的轮询，页面关掉或设备休眠时不会响。这是只读镜像的固有限制，我们没有隐瞒这一点。',
+        },
+        {
+          q: '重置一般什么时候发生？',
+          a: '没有固定时间。历史记录可以在重置记录页和按月归档里查看，用来判断最近的节奏比平时更密还是更疏。',
+        },
+      ],
+      related: ['codex-reset', 'codex-quota-run-out'],
+      sources: [
+        { label: 'Tibo（@thsottiaux）在 X 上的公开动态', url: 'https://x.com/thsottiaux' },
+        { label: 'OpenAI Status：服务状态', url: 'https://status.openai.com/' },
+      ],
+    },
+    en: {
+      title: 'How to Get Notified When Codex Resets (Three Options Compared)',
+      description:
+        'Codex resets have no schedule, so refreshing X every few minutes loses. Compare browser notifications from this site, following Tibo on X, and third-party relay bots — and who each one suits.',
+      h1: 'How to get notified when Codex resets',
+      lead: 'A global reset gets used up fast. Instead of refreshing, let the alert come to you.',
+      sections: [
+        {
+          h2: '1. Why an alert is worth setting up',
+          paragraphs: [
+            'The gap between an announcement and the reset landing is short, and the quota experience is first come, first served: knowing half an hour earlier is half an hour more window.',
+            'There is no schedule either — resets have come from incident compensation, launches and events, with gaps ranging from consecutive days to a fortnight or more. Guessing is worse than being told.',
+          ],
+        },
+        {
+          h2: '2. Browser notifications from this site',
+          paragraphs: [
+            'Open the site and press the bell in the top-right of the header, then allow notifications when the browser asks; the button switches to “on” and new announcements raise a notification.',
+            'The limitation, stated plainly: this is a read-only mirror with no server-side push, so alerts fire from the page’s own polling. Keep the page open in a background tab — nothing fires if the browser is closed or the device is asleep.',
+            'Best for: people who keep the page open while working. Free, no account, no personal data collected.',
+          ],
+        },
+        {
+          h2: '3. Follow the source',
+          paragraphs: [
+            'Almost every reset originates in a post by Codex lead Tibo (@thsottiaux) on X. Following the account with notifications on is the earliest signal there is.',
+            'The cost is noise: product updates and day-to-day posts arrive on the same feed, and resets are only part of it.',
+          ],
+        },
+        {
+          h2: '4. Third-party relays',
+          paragraphs: [
+            'Community bots forward reset announcements to Telegram, Discord or enterprise chat, which suits a team that wants one shared feed.',
+            'Watch the latency and the upkeep: every relay adds a hop, and an upstream API change can quietly stop it. Treat a relay as a supplement, not the only source.',
+          ],
+        },
+        {
+          h2: '5. What to combine',
+          paragraphs: [
+            'Individually: this site’s notification plus following Tibo covers both “at the desk” and “away from the machine”, and both are free.',
+            'As a team: one person watches and forwards to the group chat — cheaper than everybody enabling alerts separately.',
+          ],
+        },
+      ],
+      faq: [
+        {
+          q: 'Do I need an account for the notifications?',
+          a: 'No. Nothing is uploaded; the permission and the preference live in your browser only.',
+        },
+        {
+          q: 'Will I get alerts with the page closed?',
+          a: 'No. Alerts depend on the page polling, so closing the browser or sleeping the device stops them. That is a hard limit of a read-only mirror, and the interface says so.',
+        },
+        {
+          q: 'When do resets usually happen?',
+          a: 'They do not follow a clock. The reset history and the monthly archive show whether the current cadence is denser or sparser than usual.',
+        },
+      ],
+      related: ['codex-reset', 'codex-quota-run-out'],
+      sources: [
+        { label: 'Tibo (@thsottiaux) on X', url: 'https://x.com/thsottiaux' },
+        { label: 'OpenAI Status', url: 'https://status.openai.com/' },
+      ],
+    },
+  },
+
 };
 
 const SLUGS = Object.keys(ARTICLES);

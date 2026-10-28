@@ -30,6 +30,9 @@ const ROUTES = [
   ['/en/guide/codex-banked-reset', 'en', '/en/guide/codex-banked-reset'],
   ['/plan', 'zh-Hans', '/plan'],
   ['/en/plan', 'en', '/en/plan'],
+  ['/guide/codex-quota-run-out', 'zh-Hans', '/guide/codex-quota-run-out'],
+  ['/guide/codex-reset-alert', 'zh-Hans', '/guide/codex-reset-alert'],
+  ['/en/guide/codex-quota-run-out', 'en', '/en/guide/codex-quota-run-out'],
   ['/archive', 'zh-Hans', '/archive'],
   ['/en/archive', 'en', '/en/archive'],
 ];

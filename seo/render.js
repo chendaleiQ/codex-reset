@@ -497,6 +497,11 @@ function guideSection(locale) {
     tag('h2', { id: 'seo-guide-title' }, esc(label(locale, 'guidesTitle'))),
     tag('p', { class: 'seo-guide-lead' }, esc(label(locale, 'guidesLead'))),
     tag('div', { class: 'guide-cards' }, planCard + items),
+    tag('p', { class: 'guide-more' }, [
+      tag('a', { href: articlePath('codex-quota-run-out', locale) }, esc(articleMeta('codex-quota-run-out', locale).h1)),
+      tag('a', { href: articlePath('codex-reset-alert', locale) }, esc(articleMeta('codex-reset-alert', locale).h1)),
+      tag('a', { href: archivePath(locale) }, esc(label(locale, 'archiveTitle'))),
+    ].join('')),
     tag('h3', {}, esc(label(locale, 'faqTitle'))),
     tag('dl', { class: 'ssr-faq' }, faq.map((item) => tag('dt', {}, esc(item.q)) + tag('dd', {}, esc(item.a))).join('')),
   ].join(''));

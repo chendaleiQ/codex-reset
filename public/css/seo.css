@@ -541,3 +541,23 @@
   color: var(--ink-3);
   font-size: var(--t-meta);
 }
+
+/* --- more links under the guide cards ------------------------------------ */
+
+.guide-more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: var(--s4) 0 0;
+  font-size: var(--t-ui);
+}
+
+.guide-more a {
+  color: var(--line-cobalt);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.guide-more a:hover {
+  text-decoration: underline;
+}
