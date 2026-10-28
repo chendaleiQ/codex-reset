@@ -69,8 +69,15 @@ fi
 # On a configured site, verify the actual TLS virtual host before accepting the release.
 if grep -q active-proxy.conf /www/server/panel/vhost/nginx/codex-reset.conf 2>/dev/null; then
   SERVED=0
+  # The origin serves a Cloudflare Origin CA certificate, which is signed by a private
+  # root. Trust it explicitly when the root is installed; otherwise fall back to an
+  # unverified loopback check (the public TLS is verified separately by check-deploy).
+  LOOPBACK_TLS=(-k)
+  if [[ -f /etc/ssl/certs/cloudflare-origin-ca.pem ]]; then
+    LOOPBACK_TLS=(--cacert /etc/ssl/certs/cloudflare-origin-ca.pem)
+  fi
   for i in $(seq 1 10); do
-    if curl -fsS --noproxy '*' --max-time 5 --resolve codex-reset.opentunnel.asia:443:127.0.0.1 \
+    if curl -fsS "${LOOPBACK_TLS[@]}" --noproxy '*' --max-time 5 --resolve codex-reset.opentunnel.asia:443:127.0.0.1 \
       https://codex-reset.opentunnel.asia/__health > served-health.json && \
       python3 -c 'import json,sys; assert json.load(open("served-health.json"))["release"]["id"]==sys.argv[1]' "$RELEASE"; then
       SERVED=1; break

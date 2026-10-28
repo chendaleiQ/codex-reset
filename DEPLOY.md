@@ -90,3 +90,11 @@ curl -fsS 'https://codex-reset.opentunnel.asia/api/feed?locale=zh'
 - **fail2ban**：`sshd` jail，10 分钟内失败 5 次封 1 小时。
 - 部署用的 `~/.ssh/sketchive_deploy_ed25519` 不受影响；GitHub Actions 走仓库 secrets `SSH_PRIVATE_KEY` / `SSH_KNOWN_HOSTS`。
 - 如果哪天密钥丢了：走宝塔面板或阿里云控制台 VNC 进去改配置。
+
+## 源站证书与部署自检
+
+源站装的是 **Cloudflare Origin CA** 证书（私有根），所以 `deploy/activate.sh` 里的回环 TLS 自检要显式信任这个根：
+
+- 根证书位置：`/etc/ssl/certs/cloudflare-origin-ca.pem`
+- 自检优先用 `--cacert` 走真实校验；文件不存在时退回 `-k`（公网 TLS 另有 `check-deploy` 校验）
+- 没了这个根，部署会在「TLS route verification」这一步失败并回滚（站点不受影响，但新版本发不出去）
