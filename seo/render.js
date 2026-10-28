@@ -289,6 +289,17 @@ function webSiteNode(origin, locale) {
   };
 }
 
+function organizationNode(origin, locale) {
+  return {
+    '@type': 'Organization',
+    '@id': `${origin}/#organization`,
+    name: 'Codex Reset',
+    url: `${origin}${locale === 'en' ? '/en/' : '/'}`,
+    logo: `${origin}/icon-512.png`,
+    sameAs: ['https://github.com/chendaleiQ', 'https://x.com/thsottiaux'],
+  };
+}
+
 function breadcrumb(origin, locale, trail) {
   return {
     '@type': 'BreadcrumbList',
@@ -326,12 +337,42 @@ function postRow(post, locale) {
   ].join(''));
 }
 
+/** The one sentence an answer engine should be able to lift verbatim. */
+function answerLine(locale, snap) {
+  if (!snap.lastResetAt) return null;
+  const when = formatDateTime(snap.lastResetAt, locale);
+  const zone = zoneLabel(locale);
+  const parts = [];
+  if (locale === 'en') {
+    parts.push(`As of ${formatDateTime(new Date(snap.at || Date.now()).toISOString(), locale)} ${zone}, the last verified global Codex reset landed on ${when}.`);
+    if (snap.chance24 !== null) parts.push(`The 24-hour reset probability is ${snap.chance24}%.`);
+    if (snap.chance48 !== null) parts.push(`The 48-hour probability is ${snap.chance48}%.`);
+    parts.push('Both figures are public estimates, not OpenAI commitments.');
+  } else {
+    parts.push(`截至 ${formatDateTime(new Date(snap.at || Date.now()).toISOString(), locale)}（${zone}），Codex 最近一次已确认的全局重置发生在 ${when}。`);
+    if (snap.chance24 !== null) parts.push(`未来 24 小时重置概率 ${snap.chance24}%。`);
+    if (snap.chance48 !== null) parts.push(`48 小时 ${snap.chance48}%。`);
+    parts.push('概率为公开预测，不代表官方承诺。');
+  }
+  return parts.join('');
+}
+
+function answerBlock(locale, snap) {
+  const text = answerLine(locale, snap);
+  if (!text) return '';
+  return tag('p', { class: 'ssr-answer' }, [
+    tag('strong', {}, locale === 'en' ? 'Quick answer: ' : '快速回答：'),
+    esc(text),
+  ].join(''));
+}
+
 function overviewBlock(locale, snap, origin) {
   const page = routeMetaFor(locale, 'home');
   const parts = [
     tag('p', { class: 'ssr-eyebrow' }, esc(tx(locale, 'home.eyebrow'))),
     tag('h1', {}, esc(page.h1)),
     tag('p', { class: 'ssr-lead' }, esc(page.lead)),
+    answerBlock(locale, snap),
   ];
 
   if (snap.lastResetAt) {
@@ -413,10 +454,17 @@ function timelineBlock(locale, snap) {
       )
     : tag('p', { class: 'ssr-note' }, esc(label(locale, 'empty')));
 
+  const summary = snap.resets.length
+    ? locale === 'en'
+      ? `As of ${formatDateTime(new Date(snap.at || Date.now()).toISOString(), locale)} ${zoneLabel(locale)}, this record holds ${snap.resets.length} reset announcements, the most recent on ${formatDateTime(snap.lastResetAt, locale)}.${snap.typicalDays !== null ? ` The median gap between recent resets is about ${Math.round(snap.typicalDays * 10) / 10} days.` : ''}`
+      : `截至 ${formatDateTime(new Date(snap.at || Date.now()).toISOString(), locale)}（${zoneLabel(locale)}），共记录 ${snap.resets.length} 次重置公告，最近一次在 ${formatDateTime(snap.lastResetAt, locale)}。${snap.typicalDays !== null ? `近期相邻重置间隔中位数约 ${Math.round(snap.typicalDays * 10) / 10} 天。` : ''}`
+    : null;
+
   return tag('div', { id: 'ssr', class: 'ssr' }, [
     tag('p', { class: 'ssr-eyebrow' }, esc(tx(locale, 'nav.timeline'))),
     tag('h1', {}, esc(meta.h1)),
     tag('p', { class: 'ssr-lead' }, esc(label(locale, 'timelineLead'))),
+    summary ? tag('p', { class: 'ssr-answer' }, tag('strong', {}, locale === 'en' ? 'Quick answer: ' : '快速回答：') + esc(summary)) : '',
     body,
     tag('p', { class: 'ssr-note' }, esc(label(locale, 'timelineNote'))),
     tag('nav', { class: 'archive-nav', 'aria-label': label(locale, 'archiveTitle') }, [
@@ -529,7 +577,7 @@ function documentFor({ origin, pathname }) {
   }[key](locale, snap, origin);
   const showGuide = key === 'home';
 
-  const graph = [webSiteNode(origin, locale)];
+  const graph = [webSiteNode(origin, locale), organizationNode(origin, locale)];
   const graphNodes = {
     home: () => [
       {
@@ -632,6 +680,7 @@ function articleHead({ origin, locale, meta }) {
   };
   const graph = [
     webSiteNode(origin, locale),
+    organizationNode(origin, locale),
     {
       '@type': 'Article',
       '@id': `${origin}${meta.path}#article`,
@@ -756,6 +805,198 @@ function articleDocument({ origin, pathname }) {
     lang: found.locale === 'en' ? 'en' : 'zh-Hans',
     standalone: true,
   };
+}
+
+/* ----------------------------------------------------------------- about */
+
+const ABOUT = {
+  zh: {
+    path: '/about',
+    title: '关于 Codex Reset：数据来源、判定标准与更新频率',
+    description:
+      'Codex Reset 是一个个人做的非官方项目，追踪 OpenAI Codex 的额度重置。这里说明数据从哪里来、一次重置是怎么判定「已确认」的、多久更新一次，以及已知的限制。',
+    h1: '关于 Codex Reset',
+    lead: '这是一个个人维护的非官方项目，追踪 OpenAI Codex 的额度重置。下面把数据来源、判定口径和已知限制写清楚，方便你自己判断这些数字能信到什么程度。',
+    sections: [
+      {
+        h2: '这是什么',
+        paragraphs: [
+          'Codex Reset 记录 OpenAI Codex 的全局额度重置：从 Tibo（@thsottiaux）在 X 上的公开帖子中提取「宣布重置」的信号，再用监测数据确认它是否真的生效，同时给出未来 24 与 48 小时的重置概率。',
+          '除了概览，站点还有完整重置记录、按月归档、28 天计划日历、Codex 服务状态，以及解释重置机制、5 小时限额、备用额度和提醒方式的中英文说明页。',
+        ],
+      },
+      {
+        h2: '数据从哪里来',
+        list: [
+          'Tibo 的公开 X 帖子：这是绝大多数全局重置的原始信号来源。',
+          '监测账号观察到的额度变化：用于把「公告」升级为「已确认」。',
+          'OpenAI Status：判断一次异常是服务故障还是额度问题。',
+          '公开预测数据：24/48 小时概率的输入之一。',
+        ],
+        paragraphs: [
+          '本站是只读镜像：只读公开数据，不提交投票、不登录任何账号，也读不到任何人的个人额度。',
+        ],
+      },
+      {
+        h2: '一次重置是怎么被判定为「已确认」的',
+        paragraphs: [
+          '公告、待确认、已确认是三种不同状态，本站分开记录，不把预告当成已经发生的重置。',
+          '一条帖子说「今天会重置」时，它先进入「待确认」；等到监测到额度实际刷新，或者有第二个独立来源印证，才转为「已确认」。没有确认来源的条目会一直保留「待确认」标记。',
+        ],
+      },
+      {
+        h2: '更新频率与口径',
+        list: [
+          '页面数据约每分钟轮询一次；预测值会随信号变化。',
+          '时间默认按北京时间（UTC+8）显示，可切换到自己的时区。',
+          '活动日（Day 1–28）按美国太平洋时间编号，不随访问者时区移动。',
+          '预测概率是公开信号与历史节奏的推算，不代表 OpenAI 的承诺。',
+        ],
+      },
+      {
+        h2: '已知限制',
+        list: [
+          '看不到任何个人账号的额度余量，那只能在自己的「设置 → 用量」或 CLI 的 /usage 里看。',
+          '浏览器提醒依赖页面自身的轮询，页面关闭或设备休眠时不会触发。',
+          '上游接口偶发不可用时，页面会显示已获取的数据并标注可能过期。',
+          '这是个人项目，出问题没有 SLA；与 OpenAI 没有任何关系。',
+        ],
+      },
+      {
+        h2: '联系方式',
+        paragraphs: [
+          '问题、纠错或合作可以在 GitHub（chendaleiQ）提 issue，或者直接在 X 上找 @thsottiaux 的原始帖子核对。',
+        ],
+      },
+    ],
+  },
+  en: {
+    path: '/en/about',
+    title: 'About Codex Reset — Sources, Method and Limitations',
+    description:
+      'Codex Reset is an unofficial personal project that tracks OpenAI Codex quota resets. Where the data comes from, how a reset is marked verified, how often it updates, and the known limits.',
+    h1: 'About Codex Reset',
+    lead: 'This is an unofficial project maintained by one person. Below is where the data comes from, how a reset is judged, and what the numbers cannot tell you.',
+    sections: [
+      {
+        h2: 'What this is',
+        paragraphs: [
+          'Codex Reset records global quota resets for OpenAI Codex: it lifts “reset announced” signals from Tibo’s (@thsottiaux) public posts on X, confirms whether each one actually landed, and estimates the 24h and 48h probability of the next one.',
+          'Beyond the overview, the site keeps the full reset history, a monthly archive, the 28-day plan calendar, Codex service status, and explainers on reset mechanics, the 5-hour limit, banked resets and notifications in both Chinese and English.',
+        ],
+      },
+      {
+        h2: 'Where the data comes from',
+        list: [
+          'Tibo’s public posts on X — the original signal behind almost every global reset.',
+          'Allowance changes observed on monitoring accounts — what turns an announcement into a verified record.',
+          'OpenAI Status — separating a service incident from a quota problem.',
+          'Public forecast data — one input to the 24h/48h probabilities.',
+        ],
+        paragraphs: ['This site is a read-only mirror: it reads public data, never signs into an account, and cannot see anyone’s private allowance.'],
+      },
+      {
+        h2: 'How a reset becomes “verified”',
+        paragraphs: [
+          'Announced, pending and verified are three different states, and they are recorded separately. A teaser is never counted as a landed reset.',
+          'When a post says a reset is coming, it enters pending. It becomes verified once the allowance actually refreshes on monitoring accounts, or a second independent source confirms it. Anything without confirmation keeps the pending mark.',
+        ],
+      },
+      {
+        h2: 'Cadence and conventions',
+        list: [
+          'Pages poll roughly once a minute; the forecast moves with the signals.',
+          'Times default to Beijing time (UTC+8) and can be switched to your own zone.',
+          'Activity days (Day 1–28) are numbered in Pacific Time and never shift with the visitor’s timezone.',
+          'Probabilities are estimates from public signals and historical cadence, not OpenAI commitments.',
+        ],
+      },
+      {
+        h2: 'Known limitations',
+        list: [
+          'It cannot read your personal allowance — that lives in Settings → Usage or /usage in the CLI.',
+          'Browser alerts depend on the page polling; they do not fire with the page closed or the device asleep.',
+          'When the upstream API is unavailable, the page keeps the last data it has and says it may be stale.',
+          'One person runs this. There is no SLA, and there is no affiliation with OpenAI.',
+        ],
+      },
+      {
+        h2: 'Contact',
+        paragraphs: ['Corrections and questions: open an issue on GitHub (chendaleiQ), or check the original post from @thsottiaux on X.'],
+      },
+    ],
+  },
+};
+
+function aboutDocument({ origin, pathname }) {
+  const locale = pathname.startsWith('/en') ? 'en' : 'zh';
+  const copy = ABOUT[locale];
+  const alternates = { zh: ABOUT.zh.path, en: ABOUT.en.path, xDefault: ABOUT.zh.path };
+  const head = headBlock({
+    origin,
+    locale,
+    title: copy.title,
+    description: copy.description,
+    canonical: copy.path,
+    alternates,
+    jsonld: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'Organization',
+          '@id': `${origin}/#organization`,
+          name: 'Codex Reset',
+          url: `${origin}${locale === 'en' ? '/en/' : '/'}`,
+          logo: `${origin}/icon-512.png`,
+          description: copy.description,
+          sameAs: ['https://github.com/chendaleiQ', 'https://x.com/thsottiaux'],
+        },
+        {
+          '@type': 'AboutPage',
+          url: `${origin}${copy.path}`,
+          name: copy.title,
+          description: copy.description,
+          inLanguage: locale === 'en' ? 'en' : 'zh-Hans',
+          isPartOf: { '@id': `${origin}/#website` },
+          about: { '@type': 'Organization', '@id': `${origin}/#organization` },
+        },
+        breadcrumb(origin, locale, [
+          { name: locale === 'en' ? 'Overview' : '概览', path: locale === 'en' ? '/en/' : '/' },
+          { name: copy.h1, path: copy.path },
+        ]),
+      ],
+    },
+  });
+
+  const sections = copy.sections
+    .map((section) =>
+      tag('section', { class: 'doc-section' }, [
+        tag('h2', {}, esc(section.h2)),
+        ...(section.paragraphs || []).map((paragraph) => tag('p', {}, esc(paragraph))),
+        section.list ? tag('ul', {}, section.list.map((item) => tag('li', {}, esc(item))).join('')) : '',
+      ].join('')),
+    )
+    .join('');
+
+  const main = tag('main', { class: 'page doc', id: 'doc', tabindex: '-1' }, [
+    tag('nav', { class: 'doc-crumbs', 'aria-label': label(locale, 'breadcrumb') },
+      tag('a', { href: locale === 'en' ? '/en/' : '/' }, esc(label(locale, 'nav').home)) + ' / ' + tag('span', {}, esc(copy.h1)),
+    ),
+    tag('h1', {}, esc(copy.h1)),
+    tag('p', { class: 'doc-lead' }, esc(copy.lead)),
+    sections,
+    tag('aside', { class: 'doc-related' }, [
+      tag('h2', {}, esc(label(locale, 'relatedTitle'))),
+      tag('ul', {}, [
+        tag('li', {}, tag('a', { href: locale === 'en' ? '/en/timeline' : '/timeline' }, esc(tx(locale, 'nav.timeline')))),
+        tag('li', {}, tag('a', { href: locale === 'en' ? '/en/plan' : '/plan' }, esc(locale === 'en' ? 'The 28-day plan' : '28 天更新计划'))),
+        tag('li', {}, tag('a', { href: articlePath('codex-reset', locale) }, esc(articleMeta('codex-reset', locale).h1))),
+      ].join('')),
+    ].join('')),
+  ].join(''));
+
+  const shell = docShell(locale, main);
+  return { status: 200, head, headExtra: shell.headExtra, body: shell.body, lang: shell.lang, standalone: true };
 }
 
 /* ------------------------------------------------------------ 28-day plan */
@@ -1366,6 +1607,18 @@ function sitemapXml(origin) {
       });
     }
   }
+  for (const [path, lang] of [['/about', 'zh-Hans'], ['/en/about', 'en']]) {
+    entries.push({
+      loc: `${origin}${path}`,
+      lastmod,
+      priority: '0.6',
+      alternates: [
+        { lang: 'zh-Hans', href: `${origin}/about` },
+        { lang: 'en', href: `${origin}/en/about` },
+        { lang: 'x-default', href: `${origin}/about` },
+      ],
+    });
+  }
   entries.push({
     loc: `${origin}/plan`,
     lastmod,
@@ -1443,68 +1696,117 @@ function sitemapXml(origin) {
 }
 
 function robotsTxt(origin) {
-  return [
+  // Crawlers that feed answer engines and AI assistants are allowed on purpose:
+  // the whole point of this site is to be quotable.
+  const aiAgents = [
+    'GPTBot',
+    'OAI-SearchBot',
+    'ChatGPT-User',
+    'ClaudeBot',
+    'Claude-Web',
+    'anthropic-ai',
+    'PerplexityBot',
+    'Perplexity-User',
+    'Google-Extended',
+    'Applebot',
+    'Applebot-Extended',
+    'Amazonbot',
+    'CCBot',
+    'Bytespider',
+    'DuckAssistBot',
+    'cohere-ai',
+    'meta-externalagent',
+    'YouBot',
+    'MistralAI-User',
+  ];
+  const lines = [
+    '# Codex Reset — content may be crawled and quoted by search and answer engines.',
+    '',
     'User-agent: *',
     'Allow: /',
     'Disallow: /api/',
     'Disallow: /__health',
     '',
-    'User-agent: GPTBot',
-    'Allow: /',
-    'Disallow: /api/',
-    '',
-    'User-agent: OAI-SearchBot',
-    'Allow: /',
-    'Disallow: /api/',
-    '',
-    'User-agent: PerplexityBot',
-    'Allow: /',
-    '',
-    `Sitemap: ${origin}/sitemap.xml`,
-    '',
-  ].join('\n');
+  ];
+  for (const agent of aiAgents) {
+    lines.push(`User-agent: ${agent}`, 'Allow: /', 'Allow: /llms.txt', 'Disallow: /api/', '');
+  }
+  lines.push(`Sitemap: ${origin}/sitemap.xml`, `# LLM brief: ${origin}/llms.txt`, '');
+  return lines.join('\n');
 }
 
 function llmsTxt(origin) {
+  const zh = data.snapshot('zh');
+  const stamp = zh.at ? formatDateTime(new Date(zh.at).toISOString(), 'zh') : '—';
+  const lastReset = zh.lastResetAt ? formatDateTime(zh.lastResetAt, 'zh') : '—';
+  const faq = label('zh', 'faq');
   const lines = [
     '# Codex Reset',
     '',
-    '> Unofficial tracker for OpenAI Codex quota resets: the last verified reset, 24/48 hour probabilities, the 28-day activity calendar, reset history and Codex service status. Chinese is the default language; English lives under /en/.',
+    '> 非官方项目，追踪 OpenAI Codex 的额度重置：Tibo（@thsottiaux）在 X 上宣布的全局重置、未来 24/48 小时重置概率、28 天更新计划（Day 1–28）与完整重置记录。中文为主，英文在 /en/ 下。',
     '',
-    '## Pages',
+    `## 当前状态（截至 ${stamp} 北京时间）`,
+    '',
+    `- 最近一次已确认的全局重置：${lastReset}（北京时间）`,
+    zh.chance24 !== null ? `- 未来 24 小时重置概率：${zh.chance24}%` : null,
+    zh.chance48 !== null ? `- 未来 48 小时重置概率：${zh.chance48}%` : null,
+    `- 已记录的重置公告数：${zh.resets.length}`,
+    zh.typicalDays !== null ? `- 近期相邻重置间隔中位数：${Math.round(zh.typicalDays * 10) / 10} 天` : null,
+    '',
+    '概率来自公开信号与历史节奏的推算，不代表 OpenAI 的官方承诺。',
+    '',
+    '## 可直接引用的问答',
+    '',
+    ...faq.map((item) => `**${item.q}**\n${item.a}\n`),
+    '**Codex 额度重置是什么？**',
+    'Codex 的额度分两层：5 小时滚动窗口（从本次窗口第一次请求开始计时，5 小时后自动恢复）和每周额度（按周结算）。此外还有 OpenAI 主动发起的全局重置——本站记录的是最后这一种。',
+    '',
+    '**备用额度（banked reset）和全局重置有什么区别？**',
+    '备用额度是账号里一次性、需要手动领取的重置（设置 → 用量，或 CLI 的 /usage → Redeem reset），会在同时刷新 5 小时窗口与每周额度；全局重置是 OpenAI 对所有账号发起的，用户无法触发。',
+    '',
+    '## 引用本站时请注意口径',
+    '',
+    '- 本站把「公告（announced）」「待确认（pending）」「已确认（verified）」分开记录，请不要把一条公告当成已经生效的重置。',
+    '- 时间默认按北京时间（UTC+8）展示；活动日（Day 1–28）按美国太平洋时间编号，不随访问者时区变化。',
+    '- 引用格式建议：Codex Reset，https://codex-reset.opentunnel.asia/，数据截至 ' + stamp + '（北京时间）。',
+    '',
+    '## 页面',
+    '',
     ...shared.meta.ROUTE_KEYS.map((key) => {
       const route = routeMetaFor('zh', key);
-      return `- [${label('zh', 'nav')[key]}](${origin}${route.path}): ${route.description}`;
+      return `- [${label('zh', 'nav')[key]}](${origin}${route.path})：${route.description}`;
     }),
     ...shared.meta.ROUTE_KEYS.map((key) => {
       const route = routeMetaFor('en', key);
-      return `- [${label('en', 'nav')[key]}](${origin}${route.path}): ${route.description}`;
+      return `- [${label('en', 'nav')[key]}](${origin}${route.path})：${route.description}`;
     }),
     '',
-    '## The 28-day run',
-    `- [Codex 28 天更新计划](${origin}/plan): 完整的 Day 1–28 日历，每天对应的重置或产品更新。`,
-    `- [Codex 28-day plan](${origin}/en/plan): the full Day 1–28 calendar with what landed each day.`,
+    '## 28 天计划与归档',
     '',
-    '## Monthly archive',
-    `- [按月归档](${origin}/archive): 每个月一页的重置记录，含时间、类型与间隔。`,
-    `- [Monthly archive](${origin}/en/archive): one page per month of reset records.`,
+    `- [Codex 28 天更新计划](${origin}/plan)：Tibo 的 Day 1–28 逐日对照，每天是重置还是产品更新一目了然。`,
+    `- [The 28-day plan](${origin}/en/plan)：the same calendar in English.`,
+    `- [按月归档](${origin}/archive)：每个月一页的重置记录，含时间、类型与间隔。`,
     '',
-    '## Guides',
+    '## 说明页',
+    '',
     ...SLUGS.map((slug) => {
       const meta = articleMeta(slug, 'zh');
-      return `- [${meta.h1}](${origin}${meta.path}): ${meta.description}`;
+      return `- [${meta.h1}](${origin}${meta.path})：${meta.description}`;
     }),
     '',
-    '## Data',
-    `- [Forecast JSON](${origin}/api/forecast): current probabilities and the last reset time.`,
-    `- [Timeline JSON](${origin}/api/timeline): every recorded reset and banked grant.`,
-    `- [Status JSON](${origin}/api/status): Codex surface status from OpenAI Status.`,
+    '## 只读数据接口',
     '',
-    '## Notes',
-    '- Unofficial project, not affiliated with OpenAI.',
-    '- A reset “announcement” and a landed reset are different records; check the confirmation state before reporting one.',
+    `- [forecast](${origin}/api/forecast)：最近一次重置时间、24/48 小时概率、官方信号窗口。`,
+    `- [timeline](${origin}/api/timeline)：全部重置与备用额度事件。`,
+    `- [status](${origin}/api/status)：Codex 各入口的服务状态。`,
     '',
-  ];
+    '## 关于',
+    '',
+    `- [关于本站](${origin}/about)：数据来源、判定口径与已知限制。`,
+    '- 个人项目，与 OpenAI 无关；不收集账号数据，也读不到任何人的个人额度。',
+    '- 数据来源：Tibo 在 X 的公开帖子、OpenAI Status、公开预测数据。',
+    '',
+  ].filter((line) => line !== null);
   return lines.join('\n');
 }
 
@@ -1547,6 +1849,7 @@ module.exports = {
   documentFor,
   articleDocument,
   planDocument,
+  aboutDocument,
   archiveIndexDocument,
   archiveMonthDocument,
   notFoundDocument,

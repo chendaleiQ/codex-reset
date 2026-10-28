@@ -64,6 +64,7 @@ export function localizeLinks(locale) {
   const prefix = locale === 'en' ? '/en' : '';
   const map = {
     plan: `${prefix}/plan`,
+    about: `${prefix}/about`,
     guide: `${prefix}/guide/codex-reset`,
     'guide-limit': `${prefix}/guide/codex-5-hour-limit`,
     'guide-banked': `${prefix}/guide/codex-banked-reset`,

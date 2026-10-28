@@ -77,6 +77,7 @@ const SHELL_EN = [
   ['href="/status" data-i18n="nav.status">服务状态<', 'href="/en/status" data-i18n="nav.status">Service status<'],
   ['href="/vigil" data-i18n="nav.vigil">一起等重置<', 'href="/en/vigil" data-i18n="nav.vigil">The vigil<'],
   ['href="/plan" data-seo-link="plan">28 天计划<', 'href="/en/plan" data-seo-link="plan">28-day plan<'],
+  ['href="/about" data-seo-link="about">关于<', 'href="/en/about" data-seo-link="about">About<'],
   ['href="/guide/codex-reset" data-seo-link="guide-reset">重置说明<', 'href="/en/guide/codex-reset" data-seo-link="guide-reset">Reset guide<'],
   ['href="/guide/codex-5-hour-limit" data-seo-link="guide-limit">5 小时限额<', 'href="/en/guide/codex-5-hour-limit" data-seo-link="guide-limit">5-hour limit<'],
   ['href="/guide/codex-banked-reset" data-seo-link="guide-banked">备用额度<', 'href="/en/guide/codex-banked-reset" data-seo-link="guide-banked">Banked resets<'],
@@ -288,6 +289,10 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (decoded === '/about' || decoded === '/en/about') {
+    sendDocument(res, req, seo.aboutDocument({ origin, pathname: decoded }));
+    return;
+  }
   if (decoded === '/plan' || decoded === '/en/plan') {
     sendDocument(res, req, seo.planDocument({ origin, pathname: decoded }));
     return;

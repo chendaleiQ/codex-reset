@@ -33,6 +33,8 @@ const ROUTES = [
   ['/guide/codex-quota-run-out', 'zh-Hans', '/guide/codex-quota-run-out'],
   ['/guide/codex-reset-alert', 'zh-Hans', '/guide/codex-reset-alert'],
   ['/en/guide/codex-quota-run-out', 'en', '/en/guide/codex-quota-run-out'],
+  ['/about', 'zh-Hans', '/about'],
+  ['/en/about', 'en', '/en/about'],
   ['/archive', 'zh-Hans', '/archive'],
   ['/en/archive', 'en', '/en/archive'],
 ];
