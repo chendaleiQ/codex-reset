@@ -83,3 +83,10 @@ curl -fsS 'https://codex-reset.opentunnel.asia/api/feed?locale=zh'
 首次手动发布 ID 为 `20261019T100446Z-2efac1dbe3ff`，当时包含基于 `d007eb3` 的未提交修复；
 不能用该 Git 提交代替那次发布内容。首次接入已实际回滚至 blue 后恢复 green。
 后续当前版本以 `/__health` 和 GitHub Actions 运行记录为准。
+
+## 服务器访问加固（2026-10-28）
+
+- **SSH 只接受密钥**：`/etc/ssh/sshd_config.d/99-hardening.conf`（`PasswordAuthentication no`、`PermitRootLogin prohibit-password`、`MaxAuthTries 3`），并在 `sshd_config` 首行加了 `Include /etc/ssh/sshd_config.d/*.conf` 让 drop-in 生效。原配置备份在 `/etc/ssh/sshd_config.bak.*`。
+- **fail2ban**：`sshd` jail，10 分钟内失败 5 次封 1 小时。
+- 部署用的 `~/.ssh/sketchive_deploy_ed25519` 不受影响；GitHub Actions 走仓库 secrets `SSH_PRIVATE_KEY` / `SSH_KNOWN_HOSTS`。
+- 如果哪天密钥丢了：走宝塔面板或阿里云控制台 VNC 进去改配置。
