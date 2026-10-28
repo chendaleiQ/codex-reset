@@ -297,6 +297,7 @@ function organizationNode(origin, locale) {
     url: `${origin}${locale === 'en' ? '/en/' : '/'}`,
     logo: `${origin}/icon-512.png`,
     sameAs: ['https://github.com/chendaleiQ', 'https://x.com/thsottiaux'],
+    codeRepository: 'https://github.com/chendaleiQ/codex-reset',
   };
 }
 
@@ -865,7 +866,7 @@ const ABOUT = {
       {
         h2: '联系方式',
         paragraphs: [
-          '问题、纠错或合作可以在 GitHub（chendaleiQ）提 issue，或者直接在 X 上找 @thsottiaux 的原始帖子核对。',
+          '这个站是开源的，代码在 github.com/chendaleiQ/codex-reset（MIT 许可）：发现问题可以直接提 issue，或者对着源码看数据是怎么取的。判断上的分歧也可以直接在 X 上找 @thsottiaux 的原始帖子核对。',
         ],
       },
     ],
@@ -950,6 +951,7 @@ function aboutDocument({ origin, pathname }) {
           logo: `${origin}/icon-512.png`,
           description: copy.description,
           sameAs: ['https://github.com/chendaleiQ', 'https://x.com/thsottiaux'],
+          codeRepository: 'https://github.com/chendaleiQ/codex-reset',
         },
         {
           '@type': 'AboutPage',
@@ -991,6 +993,7 @@ function aboutDocument({ origin, pathname }) {
         tag('li', {}, tag('a', { href: locale === 'en' ? '/en/timeline' : '/timeline' }, esc(tx(locale, 'nav.timeline')))),
         tag('li', {}, tag('a', { href: locale === 'en' ? '/en/plan' : '/plan' }, esc(locale === 'en' ? 'The 28-day plan' : '28 天更新计划'))),
         tag('li', {}, tag('a', { href: articlePath('codex-reset', locale) }, esc(articleMeta('codex-reset', locale).h1))),
+        tag('li', {}, tag('a', { href: 'https://github.com/chendaleiQ/codex-reset', rel: 'noopener' }, esc(locale === 'en' ? 'Source code (GitHub)' : '源码（GitHub，MIT）'))),
       ].join('')),
     ].join('')),
   ].join(''));
@@ -1284,6 +1287,7 @@ function planDocument({ origin, pathname }) {
         tag('ul', {}, [
           tag('li', {}, tag('a', { href: locale === 'en' ? '/en/timeline' : '/timeline' }, esc(tx(locale, 'nav.timeline')))),
           tag('li', {}, tag('a', { href: articlePath('codex-reset', locale) }, esc(articleMeta('codex-reset', locale).h1))),
+        tag('li', {}, tag('a', { href: 'https://github.com/chendaleiQ/codex-reset', rel: 'noopener' }, esc(locale === 'en' ? 'Source code (GitHub)' : '源码（GitHub，MIT）'))),
           tag('li', {}, tag('a', { href: articlePath('codex-5-hour-limit', locale) }, esc(articleMeta('codex-5-hour-limit', locale).h1))),
         ].join('')),
       ].join('')),
@@ -1456,6 +1460,7 @@ function archiveIndexDocument({ origin, pathname }) {
         tag('li', {}, tag('a', { href: locale === 'en' ? '/en/timeline' : '/timeline' }, esc(tx(locale, 'nav.timeline')))),
         tag('li', {}, tag('a', { href: locale === 'en' ? '/en/plan' : '/plan' }, esc(locale === 'en' ? 'The 28-day plan' : '28 天更新计划'))),
         tag('li', {}, tag('a', { href: articlePath('codex-reset', locale) }, esc(articleMeta('codex-reset', locale).h1))),
+        tag('li', {}, tag('a', { href: 'https://github.com/chendaleiQ/codex-reset', rel: 'noopener' }, esc(locale === 'en' ? 'Source code (GitHub)' : '源码（GitHub，MIT）'))),
       ].join('')),
     ].join('')),
   ].join(''));
