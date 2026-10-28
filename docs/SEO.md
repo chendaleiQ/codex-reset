@@ -96,3 +96,38 @@
 
 - **HTTPS 证书 2027-01-17 到期**，且当前是手动 DNS 验证，不能自动续期。证书一掉，排名会归零。接 Cloudflare 后建议直接切到 Cloudflare 的证书，或给 acme.sh 配 DNS API 自动续期。
 - 数据来自 `codex-reset.com` 的公开接口，逐字照抄它原来的标题/描述会被判重复内容——本次已全部改为原创标题与文案。
+
+## 八、GEO（生成式引擎优化）与每日监控
+
+### 已做的技术面（2026-10-28 16:00 上线）
+
+| 项目 | 状态 |
+| --- | --- |
+| AI 爬虫实测可达 | GPTBot / OAI-SearchBot / ChatGPT-User / ClaudeBot / PerplexityBot / Google-Extended / Bytespider 全部 200 |
+| Cloudflare AI 防护 | 全部关闭（`ai_bots_protection: disabled`），不拦 AI 抓取 |
+| robots.txt | 显式放行 20 个 agent，声明 llms.txt |
+| llms.txt | 4,000+ 字符：带时间戳的当前状态、可直接引用的问答、引用口径与格式、页面与接口索引 |
+| 快速回答块 | 首页与 /timeline 服务端渲染一句带时间戳的结论，供答案引擎直接摘取 |
+| /about | 中英双语：数据来源、重置判定口径、更新频率、已知限制 + `Organization` / `AboutPage` / `sameAs` |
+| JSON-LD | 全站补 `Organization` 节点，首页为 Dataset + FAQPage + Organization + WebPage |
+
+### 性能修复（同一天）
+
+隧道默认走 QUIC（UDP），国内出口对该协议不友好，首字节一度到 12 秒。已改为：
+
+- cloudflared 强制 `--protocol http2 --edge-ip-version 4`（systemd override）
+- Cloudflare Cache Rule：只有**无扩展名的页面路径**缓存 60 秒，静态资源仍按源站 no-cache 走回源，避免部署后拿到旧文件
+
+改完实测（check-host 全球节点）：美国 **0.54s**、西班牙 0.78s、塞尔维亚 0.85s、俄罗斯 0.26s、印度 2.08s。源站直连仍是 0.16s，但国内访客需要跨境到 Cloudflare 边缘，这是换取 Google 可抓取的代价。
+
+### 每日监控
+
+已设置每天 10:00（北京时间）的例行检查，内容：
+
+1. 服务器日志：请求量与 5xx、真实 AI 爬虫命中、真实 Googlebot 命中、可疑爬虫 IP、隧道健康
+2. Google：`site:` 收录数、5 个目标词是否出现及位次、Search Console 索引数与站点地图状态
+3. AI 引擎：Perplexity / Google AI 概览是否引用本站（ChatGPT 未登录则跳过）
+
+### 外链与引用源
+
+发布稿见 [外链与GEO发布.md](外链与GEO发布.md)：X（中英）、linux.do、Reddit、V2EX，以及发布顺序和禁忌。
