@@ -292,6 +292,17 @@ const server = http.createServer((req, res) => {
     sendDocument(res, req, seo.planDocument({ origin, pathname: decoded }));
     return;
   }
+  if (decoded === '/archive' || decoded === '/en/archive') {
+    sendDocument(res, req, seo.archiveIndexDocument({ origin, pathname: decoded }));
+    return;
+  }
+  if (/^(?:\/en)?\/archive\/\d{4}-\d{2}\/?$/.test(decoded)) {
+    const monthPage = seo.archiveMonthDocument({ origin, pathname: decoded });
+    if (monthPage) {
+      sendDocument(res, req, monthPage);
+      return;
+    }
+  }
 
   const article = seo.articleDocument({ origin, pathname: decoded });
   if (article) {

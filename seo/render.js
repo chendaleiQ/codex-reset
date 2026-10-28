@@ -79,7 +79,7 @@ const LABELS = {
     lastResetAt: '上次重置',
     timelineLead: '按时间倒序记录每一次重置与备用额度发放，并给出相邻两次已验证重置之间的间隔。',
     timelineNote: '「间隔」是相邻两次重置公告之间相差的天数，可以用来判断当前的节奏比历史上更密还是更疏。备用额度不算一次重置，它只是一次可以手动使用的额度发放；重置公告在确认生效之前，会单独标记为待确认。',
-    tableDate: '日期',
+    tableDate: '日期（北京时间）',
     tableType: '类型',
     tableInterval: '间隔',
     tableSource: '来源',
@@ -97,6 +97,17 @@ const LABELS = {
     dataNote: '数据来自公开来源，仅供参考。',
     breadcrumb: '面包屑',
     guideIndex: '说明',
+    archiveTitle: '按月归档',
+    archiveLead: '按月份查看 Codex 的重置记录，每个月一页，包含每次公告的时间、类型和间隔。',
+    archiveMonths: '{n} 个月',
+    archiveResets: '本月记录的重置',
+    archiveGap: '与上个月最后一次重置相隔 {days} 天',
+    archivePrev: '上个月',
+    archiveNext: '下个月',
+    archiveAll: '全部记录',
+    archiveEmpty: '这个月还没有记录。',
+    archiveH1: '{year} 年 {month} 月 Codex 重置记录',
+    archiveNotes: '时间按北京时间（UTC+8）显示；类型区分重置公告、待确认和备用额度发放。',
   },
   en: {
     lastVerified: 'Last verified reset',
@@ -142,7 +153,7 @@ const LABELS = {
     lastResetAt: 'Last reset',
     timelineLead: 'Every reset and banked grant in reverse chronological order, with the gap between consecutive verified resets.',
     timelineNote: 'The gap column is the number of days between consecutive reset announcements, which shows whether the current cadence is denser or sparser than usual. A banked grant is not a reset — it is an allowance you redeem manually. An announcement stays marked pending until it actually lands.',
-    tableDate: 'Date',
+    tableDate: 'Date (PT)',
     tableType: 'Type',
     tableInterval: 'Gap',
     tableSource: 'Source',
@@ -160,6 +171,17 @@ const LABELS = {
     dataNote: 'Data comes from public sources and is for reference only.',
     breadcrumb: 'Breadcrumb',
     guideIndex: 'Guides',
+    archiveTitle: 'Monthly archive',
+    archiveLead: 'Codex reset records month by month, one page each, with the time, type and gap of every entry.',
+    archiveMonths: '{n} months',
+    archiveResets: 'Resets recorded this month',
+    archiveGap: 'Gap from the last reset of the previous month: {days} days',
+    archivePrev: 'Previous month',
+    archiveNext: 'Next month',
+    archiveAll: 'All records',
+    archiveEmpty: 'No records in this month yet.',
+    archiveH1: 'Codex resets in {month} {year}',
+    archiveNotes: 'Times are shown in Pacific Time; types separate reset announcements, pending entries and banked grants.',
   },
 };
 
@@ -395,6 +417,12 @@ function timelineBlock(locale, snap) {
     tag('p', { class: 'ssr-lead' }, esc(label(locale, 'timelineLead'))),
     body,
     tag('p', { class: 'ssr-note' }, esc(label(locale, 'timelineNote'))),
+    tag('nav', { class: 'archive-nav', 'aria-label': label(locale, 'archiveTitle') }, [
+      tag('a', { href: archivePath(locale) }, esc(label(locale, 'archiveTitle'))),
+      ...archiveMonths(locale).slice(0, 4).map((entry) =>
+        tag('a', { href: archivePath(locale, entry.month) }, esc(monthLabel(entry.month, locale))),
+      ),
+    ].join('')),
   ].join(''));
 }
 
@@ -770,7 +798,7 @@ function shortDate(dateString, locale) {
 const PLAN = {
   zh: {
     path: '/plan',
-    title: 'Codex 28 天更新计划：Day 1–28 完整日历',
+    title: 'Codex 28 天计划日历：Day 1–28 更新与重置记录',
     description:
       'Tibo 宣布的 Codex 28 天更新计划（Day 1–28）完整日历：每一天的日期、对应的重置或产品更新，以及已收录与未收录的天数。按美国太平洋时间编号。',
     h1: 'Codex 28 天更新计划：Day 1–28 完整日历',
@@ -1031,6 +1059,277 @@ function planDocument({ origin, pathname }) {
   };
 }
 
+/* --------------------------------------------------------- monthly archive */
+
+/** `YYYY-MM` for a timestamp in the locale's display timezone. */
+function localMonth(value, locale) {
+  const time = Date.parse(value ?? '');
+  if (!Number.isFinite(time)) return null;
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: zoneFor(locale),
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(new Date(time));
+  const get = (type) => parts.find((part) => part.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}`;
+}
+
+function monthLabel(month, locale) {
+  const [year, monthNumber] = String(month || '').split('-');
+  const date = new Date(Date.UTC(Number(year), Number(monthNumber) - 1, 1, 12));
+  if (!Number.isFinite(date.getTime())) return month;
+  if (locale === 'en') {
+    return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(date);
+  }
+  return `${year} 年 ${Number(monthNumber)} 月`;
+}
+
+/** Every month that has at least one record, newest first. */
+function archiveMonths(locale) {
+  const snap = data.snapshot(locale);
+  const counts = new Map();
+  for (const record of snap.records) {
+    const month = localMonth(record.at, locale);
+    if (!month) continue;
+    counts.set(month, (counts.get(month) || 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([month, count]) => ({ month, count }));
+}
+
+function archivePath(locale, month) {
+  const prefix = locale === 'en' ? '/en' : '';
+  return month ? `${prefix}/archive/${month}` : `${prefix}/archive`;
+}
+
+function docShell(locale, mainHtml, extraHead) {
+  const nav = shared.meta.ROUTE_KEYS.map((key) => {
+    const route = routeMetaFor(locale, key);
+    return tag('a', { href: route.path }, esc(label(locale, 'nav')[key]));
+  }).join('');
+  const body = [
+    tag('a', { class: 'skip-link', href: '#doc' }, esc(label(locale, 'skip'))),
+    tag('header', { class: 'masthead' }, tag('div', { class: 'masthead-inner' }, [
+      tag('a', { class: 'wordmark', href: locale === 'en' ? '/en/' : '/', 'aria-label': 'Codex Reset' }, [
+        tag('span', { class: 'wordmark-mark', 'aria-hidden': 'true' }, ''),
+        tag('span', { class: 'wordmark-text' }, 'Codex Reset'),
+      ].join('')),
+      tag('nav', { class: 'masthead-nav', 'aria-label': label(locale, 'nav').home }, nav),
+    ].join(''))),
+    mainHtml,
+    tag('footer', { class: 'colophon' }, tag('div', { class: 'colophon-inner' }, [
+      tag('p', { class: 'colophon-note' }, esc(label(locale, 'official'))),
+      tag('p', { class: 'colophon-source' }, esc(label(locale, 'dataNote'))),
+    ].join(''))),
+  ].join('');
+  return {
+    head: null,
+    headExtra: [
+      voidTag('meta', { name: 'theme-color', content: '#f5f6f8' }),
+      voidTag('link', { rel: 'icon', href: '/icon.svg', type: 'image/svg+xml' }),
+      voidTag('link', { rel: 'stylesheet', href: '/css/tokens.css' }),
+      voidTag('link', { rel: 'stylesheet', href: '/css/base.css' }),
+      voidTag('link', { rel: 'stylesheet', href: '/css/shell.css' }),
+      voidTag('link', { rel: 'stylesheet', href: '/css/seo.css' }),
+    ].join('\n'),
+    body,
+    lang: locale === 'en' ? 'en' : 'zh-Hans',
+    standalone: true,
+    extraHead,
+  };
+}
+
+function archiveIndexDocument({ origin, pathname }) {
+  const locale = pathname.startsWith('/en/') ? 'en' : 'zh';
+  const months = archiveMonths(locale);
+  const copyTitle = locale === 'en' ? 'Codex reset archive by month' : 'Codex 重置记录：按月归档';
+  const copyDescription =
+    locale === 'en'
+      ? 'Every month of Codex reset records on its own page: the announcement time, the type of entry (reset, pending or banked) and the gap from the previous reset, kept in Pacific Time.'
+      : '按月查看 Codex 额度重置的完整记录：每个月的重置公告时间、类型（重置、待确认或备用额度）以及与上一次重置之间的间隔，时间统一按北京时间显示。';
+
+  const head = headBlock({
+    origin,
+    locale,
+    title: copyTitle,
+    description: copyDescription,
+    canonical: archivePath(locale),
+    alternates: { zh: archivePath('zh'), en: archivePath('en'), xDefault: archivePath('zh') },
+    jsonld: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        webSiteNode(origin, locale),
+        {
+          '@type': 'CollectionPage',
+          url: `${origin}${archivePath(locale)}`,
+          name: copyTitle,
+          description: copyDescription,
+          inLanguage: locale === 'en' ? 'en' : 'zh-Hans',
+        },
+        {
+          '@type': 'ItemList',
+          name: copyTitle,
+          itemListElement: months.map((entry, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            name: monthLabel(entry.month, locale),
+            url: `${origin}${archivePath(locale, entry.month)}`,
+          })),
+        },
+      ],
+    },
+  });
+
+  const rows = months.length
+    ? tag('ul', { class: 'archive-list' }, months.map((entry) =>
+        tag('li', {}, [
+          tag('a', { href: archivePath(locale, entry.month) }, esc(monthLabel(entry.month, locale))),
+          tag('span', { class: 'archive-count' }, esc(`${entry.count}`)),
+        ].join('')),
+      ).join(''))
+    : tag('p', { class: 'ssr-note' }, esc(label(locale, 'archiveEmpty')));
+
+  const main = tag('main', { class: 'page doc', id: 'doc', tabindex: '-1' }, [
+    tag('nav', { class: 'doc-crumbs', 'aria-label': label(locale, 'breadcrumb') },
+      tag('a', { href: locale === 'en' ? '/en/' : '/' }, esc(label(locale, 'nav').home)) + ' / ' + tag('span', {}, esc(label(locale, 'archiveTitle'))),
+    ),
+    tag('h1', {}, esc(label(locale, 'archiveTitle'))),
+    tag('p', { class: 'doc-lead' }, esc(label(locale, 'archiveLead'))),
+    tag('p', {}, esc(locale === 'en'
+      ? 'A reset announcement and a landed reset are different records: an entry marked pending has been announced but not yet observed. Banked grants are not resets either — they are allowances an account redeems manually. Every month below is a page of its own, and the live overview always carries the most recent one.'
+      : '重置公告和已经生效的重置是两种记录：标记为待确认的条目只代表公告已经发出，还没有观测到生效。备用额度也不算一次重置，它是账号里可以手动使用的一次额度发放。下面每个月都是独立页面，最新一条始终在概览页上。')),
+    rows,
+    tag('aside', { class: 'doc-related' }, [
+      tag('h2', {}, esc(label(locale, 'relatedTitle'))),
+      tag('ul', {}, [
+        tag('li', {}, tag('a', { href: locale === 'en' ? '/en/timeline' : '/timeline' }, esc(tx(locale, 'nav.timeline')))),
+        tag('li', {}, tag('a', { href: locale === 'en' ? '/en/plan' : '/plan' }, esc(locale === 'en' ? 'The 28-day plan' : '28 天更新计划'))),
+        tag('li', {}, tag('a', { href: articlePath('codex-reset', locale) }, esc(articleMeta('codex-reset', locale).h1))),
+      ].join('')),
+    ].join('')),
+  ].join(''));
+
+  const shell = docShell(locale, main);
+  return { status: 200, head, headExtra: shell.headExtra, body: shell.body, lang: shell.lang, standalone: true };
+}
+
+function archiveMonthEntries(locale) {
+  const snap = data.snapshot(locale);
+  const grouped = new Map();
+  for (const record of snap.records) {
+    const month = localMonth(record.at, locale);
+    if (!month) continue;
+    if (!grouped.has(month)) grouped.set(month, []);
+    grouped.get(month).push(record);
+  }
+  for (const list of grouped.values()) list.sort((a, b) => (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0));
+  return grouped;
+}
+
+function archiveMonthDocument({ origin, pathname }) {
+  const match = /^(?:\/en)?\/archive\/(\d{4}-\d{2})\/?$/.exec(pathname || '');
+  if (!match) return null;
+  const locale = pathname.startsWith('/en/') ? 'en' : 'zh';
+  const month = match[1];
+  const grouped = archiveMonthEntries(locale);
+  const records = grouped.get(month);
+  if (!records || !records.length) return null;
+
+  const months = [...grouped.keys()].sort((a, b) => (a < b ? 1 : -1));
+  const index = months.indexOf(month);
+  const newer = index > 0 ? months[index - 1] : null;
+  const older = index < months.length - 1 ? months[index + 1] : null;
+
+  const title = label(locale, 'archiveH1')
+    .replace('{year}', month.slice(0, 4))
+    .replace('{month}', locale === 'en' ? monthLabel(month, 'en').split(' ')[0] : String(Number(month.slice(5, 7))));
+  const description =
+    locale === 'en'
+      ? `Codex reset records for ${monthLabel(month, 'en')}: ${records.length} entries with times, types and intervals.`
+      : `${monthLabel(month, 'zh')}的 Codex 额度重置记录：共 ${records.length} 条，含时间、类型与间隔。`;
+
+  const resetCount = records.filter((record) => record.type === 'reset').length;
+  const head = headBlock({
+    origin,
+    locale,
+    title: `${title} — Codex Reset`,
+    description,
+    canonical: archivePath(locale, month),
+    alternates: {
+      zh: archivePath('zh', month),
+      en: archivePath('en', month),
+      xDefault: archivePath('zh', month),
+    },
+    jsonld: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        webSiteNode(origin, locale),
+        {
+          '@type': 'WebPage',
+          url: `${origin}${archivePath(locale, month)}`,
+          name: title,
+          description,
+          inLanguage: locale === 'en' ? 'en' : 'zh-Hans',
+          datePublished: `${month}-01`,
+        },
+        {
+          '@type': 'ItemList',
+          name: title,
+          itemListElement: records.map((record, position) => ({
+            '@type': 'ListItem',
+            position: position + 1,
+            name: `${formatDateTime(record.at, locale)} — ${plain(record.summary, 80) || label(locale, 'kindReset')}`,
+          })),
+        },
+      ],
+    },
+  });
+
+  const rows = records.map((record) => {
+    const kind =
+      record.type === 'reset'
+        ? record.pending
+          ? label(locale, 'pending')
+          : label(locale, 'kindReset')
+        : record.type === 'credits' || record.type === 'boost' || record.type === 'unlock'
+          ? label(locale, 'kindBanked')
+          : label(locale, 'kindOther');
+    return tag('tr', {}, [
+      tag('td', {}, tag('time', { datetime: isoStamp(record.at) || '' }, esc(formatDateTime(record.at, locale)))),
+      tag('td', {}, esc(kind)),
+      tag('td', { lang: textLang(record.summary, locale) }, esc(plain(record.summary, 200) || '—')),
+    ].join(''));
+  }).join('');
+
+  const main = tag('main', { class: 'page doc', id: 'doc', tabindex: '-1' }, [
+    tag('nav', { class: 'doc-crumbs', 'aria-label': label(locale, 'breadcrumb') }, [
+      tag('a', { href: locale === 'en' ? '/en/' : '/' }, esc(label(locale, 'nav').home)),
+      ' / ',
+      tag('a', { href: archivePath(locale) }, esc(label(locale, 'archiveTitle'))),
+      ' / ',
+      tag('span', {}, esc(monthLabel(month, locale))),
+    ].join('')),
+    tag('h1', {}, esc(title)),
+    tag('p', { class: 'doc-lead' }, esc(`${label(locale, 'archiveResets')}: ${resetCount} / ${records.length}`)),
+    tag('table', { class: 'ssr-table' }, [
+      tag('thead', {}, tag('tr', {}, [
+        tag('th', { scope: 'col' }, esc(locale === 'en' ? 'Time (PT)' : '时间（北京时间）')),
+        tag('th', { scope: 'col' }, esc(label(locale, 'tableType'))),
+        tag('th', { scope: 'col' }, esc(label(locale, 'tableSource'))),
+      ].join(''))),
+      tag('tbody', {}, rows),
+    ].join('')),
+    tag('p', { class: 'ssr-note' }, esc(label(locale, 'archiveNotes'))),
+    tag('nav', { class: 'archive-nav', 'aria-label': label(locale, 'archiveTitle') }, [
+      older ? tag('a', { href: archivePath(locale, older) }, `← ${monthLabel(older, locale)}`) : '',
+      tag('a', { href: archivePath(locale) }, esc(label(locale, 'archiveAll'))),
+      newer ? tag('a', { href: archivePath(locale, newer) }, `${monthLabel(newer, locale)} →`) : '',
+    ].join('')),
+  ].join(''));
+
+  const shell = docShell(locale, main);
+  return { status: 200, head, headExtra: shell.headExtra, body: shell.body, lang: shell.lang, standalone: true };
+}
+
 /* ------------------------------------------------------- sitemap / robots */
 
 function sitemapXml(origin) {
@@ -1072,6 +1371,31 @@ function sitemapXml(origin) {
       { lang: 'x-default', href: `${origin}/plan` },
     ],
   });
+  for (const locale of ['zh', 'en']) {
+    const prefix = locale === 'en' ? '/en' : '';
+    entries.push({
+      loc: `${origin}${prefix}/archive`,
+      lastmod,
+      priority: '0.6',
+      alternates: [
+        { lang: 'zh-Hans', href: `${origin}/archive` },
+        { lang: 'en', href: `${origin}/en/archive` },
+        { lang: 'x-default', href: `${origin}/archive` },
+      ],
+    });
+    for (const entry of archiveMonths(locale)) {
+      entries.push({
+        loc: `${origin}${archivePath(locale, entry.month)}`,
+        lastmod,
+        priority: '0.5',
+        alternates: [
+          { lang: 'zh-Hans', href: `${origin}${archivePath('zh', entry.month)}` },
+          { lang: 'en', href: `${origin}${archivePath('en', entry.month)}` },
+          { lang: 'x-default', href: `${origin}${archivePath('zh', entry.month)}` },
+        ],
+      });
+    }
+  }
   for (const slug of SLUGS) {
     for (const locale of ['zh', 'en']) {
       const alt = { zh: articlePath(slug, 'zh'), en: articlePath(slug, 'en') };
@@ -1146,6 +1470,10 @@ function llmsTxt(origin) {
     `- [Codex 28 天更新计划](${origin}/plan): 完整的 Day 1–28 日历，每天对应的重置或产品更新。`,
     `- [Codex 28-day plan](${origin}/en/plan): the full Day 1–28 calendar with what landed each day.`,
     '',
+    '## Monthly archive',
+    `- [按月归档](${origin}/archive): 每个月一页的重置记录，含时间、类型与间隔。`,
+    `- [Monthly archive](${origin}/en/archive): one page per month of reset records.`,
+    '',
     '## Guides',
     ...SLUGS.map((slug) => {
       const meta = articleMeta(slug, 'zh');
@@ -1204,6 +1532,8 @@ module.exports = {
   documentFor,
   articleDocument,
   planDocument,
+  archiveIndexDocument,
+  archiveMonthDocument,
   notFoundDocument,
   sitemapXml,
   robotsTxt,

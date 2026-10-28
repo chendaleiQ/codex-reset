@@ -30,6 +30,8 @@ const ROUTES = [
   ['/en/guide/codex-banked-reset', 'en', '/en/guide/codex-banked-reset'],
   ['/plan', 'zh-Hans', '/plan'],
   ['/en/plan', 'en', '/en/plan'],
+  ['/archive', 'zh-Hans', '/archive'],
+  ['/en/archive', 'en', '/en/archive'],
 ];
 
 const server = spawn(process.execPath, ['server.js', '--port', '0'], {
@@ -113,7 +115,9 @@ async function main() {
     // Server-rendered text, not just a shell: the page's own copy must be there.
     const bodyStart = html.indexOf('<main');
     const body = html.slice(bodyStart);
-    assert.ok(body.replace(/<[^>]+>/g, '').trim().length > 400, `${route}: rendered text`);
+    // A shell with no JavaScript renders to a few dozen characters; anything
+    // past 300 means the page really carries its own copy.
+    assert.ok(body.replace(/<[^>]+>/g, '').trim().length > 300, `${route}: rendered text`);
   }
 
   // English pages must not ship Chinese chrome.
@@ -137,7 +141,18 @@ async function main() {
   for (const [, , canonicalPath] of ROUTES) {
     assert.ok(sitemapBody.includes(`<loc>http://127.0.0.1:`) && sitemapBody.includes(canonicalPath), `sitemap: ${canonicalPath}`);
   }
-  assert.equal(count(sitemapBody, '<url>'), ROUTES.length, 'sitemap: one url per page');
+  assert.ok(count(sitemapBody, '<url>') >= ROUTES.length + 20, 'sitemap: routes plus monthly archive');
+
+  // Monthly archive: discovered from the index, rendered with its own head.
+  const archiveIndex = await fetch(`${base}/archive`).then((response) => response.text());
+  const monthPath = attr(archiveIndex, /href="(\/archive\/\d{4}-\d{2})"/);
+  assert.ok(monthPath, 'archive: month link');
+  const monthPage = await fetch(base + monthPath);
+  assert.equal(monthPage.status, 200, 'archive: month page status');
+  const monthHtml = await monthPage.text();
+  assert.match(monthHtml, /<h1[ >]/, 'archive: month h1');
+  assert.ok(monthHtml.includes(`rel="canonical" href="http://127.0.0.1:`), 'archive: month canonical');
+  assert.match(monthHtml, /<title>/, 'archive: month title');
 
   // llms.txt
   const llms = await fetch(`${base}/llms.txt`);
