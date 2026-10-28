@@ -249,6 +249,8 @@ function headBlock({ origin, locale, title, description, canonical, alternates, 
     tag('title', {}, esc(title)),
     voidTag('meta', { name: 'description', content: description }),
     voidTag('meta', { name: 'robots', content: 'index, follow, max-image-preview:large, max-snippet:-1' }),
+    // Search Console ownership token; must stay in the head of every page.
+    voidTag('meta', { name: 'google-site-verification', content: '_vSYq_Jfd8ZiwFzUo5Rf5L4lDRx02HPa-CXh8U44Fj4' }),
     voidTag('link', { rel: 'canonical', href: absolute(canonical) }),
     voidTag('link', { rel: 'alternate', hreflang: 'zh-Hans', href: absolute(alternates.zh) }),
     voidTag('link', { rel: 'alternate', hreflang: 'en', href: absolute(alternates.en) }),
