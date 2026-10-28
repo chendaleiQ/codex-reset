@@ -10,6 +10,8 @@ import { getState, setLocale, startStore, subscribe } from './store.js';
 import { alertsStatus, announceReset, disableAlerts, enableAlerts, markSeen, sendTest } from './notify.js';
 import { statusView } from './model.js';
 import { getTimeZone, getTimeZonePreference, localTimeZone, setTimeZone, subscribeTimeZone, zoneLabel, zoneShort } from './time-zone.js';
+import { applyPageSeo, localizeLinks } from './seo.js';
+import { pathFor, resolvePath } from './seo-meta.js';
 
 /**
  * Overview and reset history are the primary routes. Service status and
@@ -192,7 +194,7 @@ function renderNav(path) {
       el(
         'a',
         {
-          href: route.path,
+          href: pathFor(route.key, app.locale),
           ...(route.path === path ? { 'aria-current': 'page' } : {}),
         },
         app.t(route.label),
@@ -217,6 +219,7 @@ function renderLocaleMenu() {
   text($('#locale-label'), LOCALE_LABEL[app.locale] ?? app.locale);
 }
 
+/** Language is part of the URL, so switching it is a navigation, not a redraw. */
 function switchLocale(code) {
   const next = normalizeLocale(code);
   if (!next || next === app.locale) return;
@@ -225,22 +228,18 @@ function switchLocale(code) {
   } catch {
     /* storage disabled */
   }
-  applyLocale(next);
-  setLocale(next);
-  renderNav(currentPath());
-  renderLocaleMenu();
-  renderClock();
-  render(currentPath(), { replace: true, force: true });
+  const route = resolvePath(currentPath())?.key ?? 'home';
+  location.assign(pathFor(route, next));
 }
 
 function applyLocale(next) {
   app.locale = next;
   app.t = translator(next);
   document.documentElement.lang = next === 'zh' ? 'zh-Hans' : next;
-  document.title = `${app.t('app.name')} — ${app.t('app.tagline')}`;
   const description = document.querySelector('meta[name="description"]');
   if (description) description.setAttribute('content', app.t('app.description'));
   text($('#wordmark-sub'), app.t('app.sub'));
+  localizeLinks(next);
   text($('#colophon-note'), app.t('footer.disclaimer'));
   text($('#skip'), app.t('nav.skip'));
   document.querySelectorAll('[data-i18n]').forEach((node) => text(node, app.t(node.dataset.i18n)));
@@ -317,6 +316,16 @@ function currentPath() {
 }
 
 let activeCleanup = null;
+let mounted = null;
+
+/** Replace the server-rendered first paint (or the previous view) in place. */
+function mountView(main, host) {
+  const shell = $('#ssr');
+  if (shell) shell.replaceWith(host);
+  else if (mounted?.isConnected) mounted.replaceWith(host);
+  else main.replaceChildren(host);
+  mounted = host;
+}
 
 async function render(path, { force = false } = {}) {
   const route = ROUTES.find((entry) => entry.path === path) ?? ROUTES[0];
@@ -328,8 +337,9 @@ async function render(path, { force = false } = {}) {
   }
   const module = await import(`./views/${route.key}.js`);
   const host = el('div', { class: 'page-enter' });
-  main.replaceChildren(host);
-  document.title = `${app.t('app.name')} — ${app.t(route.title)}`;
+  mountView(main, host);
+  applyPageSeo(route.key, app.locale);
+  if (route.key !== 'home') $('#seo-guide')?.remove();
   const cleanup = await module.render(host, app, {});
   activeCleanup = typeof cleanup === 'function' ? cleanup : null;
   if (force) host.classList.remove('page-enter');
@@ -370,7 +380,7 @@ function onClick(event) {
     return;
   }
   const path = href.split('#')[0];
-  if (!ROUTES.some((route) => route.path === path)) return;
+  if (!resolvePath(path)) return;
   event.preventDefault();
   app.navigate(href);
 }

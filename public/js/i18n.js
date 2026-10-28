@@ -35,7 +35,7 @@ const DICT = {
     "calendar.eventsCount": "{n} 条事件",
 
     "home.eyebrow": "CODEX 额度追踪",
-    "home.title": "重置和更新，一眼看清",
+    "home.title": "Codex 今天会重置吗？",
     "home.intro": "查看额度重置记录，跟进每天的产品更新。",
     "home.summary": "额度重置概况",
     "home.ageDays": "距今 {days} 天",
@@ -256,7 +256,7 @@ const DICT = {
     'poll.window.not_soon': '还有得等',
     'poll.submitted': '投好了',
 
-    'timeline.h1': '重置记录',
+    'timeline.h1': 'Codex 额度重置记录',
     'timeline.lede': '重置、备用额度和相关公告，按时间汇总。',
     'timeline.statResets': '已确认的额度重置',
     'timeline.statBanked': '备用额度（不算重置）',
@@ -337,7 +337,7 @@ const DICT = {
     'status.railsHead': '服务运行情况',
     'status.railsNote': '分别查看 Codex 各项服务的运行情况。',
 
-    'vigil.h1': '一起等重置',
+    'vigil.h1': 'Codex 历史上通常几点重置？',
     'vigil.lede': '看看有多少人也在等待下一次额度重置。',
     'vigil.believers': '正在等待的人',
     'vigil.cycle': '第 {cycle} 轮 · 第 {day} 天',
@@ -449,7 +449,7 @@ const DICT = {
     "calendar.eventsCount": "{n} events",
 
     "home.eyebrow": "CODEX USAGE TRACKER",
-    "home.title": "Every reset. Every update.",
+    "home.title": "Will Codex reset today?",
     "home.intro": "Track quota resets and follow the daily product updates.",
     "home.summary": "Quota reset overview",
     "home.ageDays": "{days} days ago",
@@ -670,7 +670,7 @@ const DICT = {
     'poll.window.not_soon': 'Not soon',
     'poll.submitted': 'Vote recorded',
 
-    'timeline.h1': 'Reset timeline',
+    'timeline.h1': 'Codex reset history',
     'timeline.lede': 'Every verified Codex reset, on the record.',
     'timeline.statResets': 'Verified global resets',
     'timeline.statBanked': 'Banked grants (not resets)',
@@ -733,7 +733,7 @@ const DICT = {
     'radar.contentAge': 'Content age {days} days',
     'radar.followers': '{n} followers',
 
-    'status.h1': 'Codex status',
+    'status.h1': 'Codex service status',
     'status.lede': 'Official service state, with the reset impact.',
     'status.surfaces': 'Current component state',
     'status.surfacesNote': 'Live from OpenAI Status. Incidents unrelated to resets still appear.',
@@ -751,7 +751,7 @@ const DICT = {
     'status.railsHead': 'Line state',
     'status.railsNote': 'One line per Codex surface. A broken stroke means it is not healthy.',
 
-    'vigil.h1': 'The vigil',
+    'vigil.h1': 'When does Codex usually reset?',
     'vigil.lede': 'Independent tracking of verified Tibo resets.',
     'vigil.believers': 'Believers keeping vigil',
     'vigil.cycle': 'Cycle {cycle} · day {day}',

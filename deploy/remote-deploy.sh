@@ -16,6 +16,7 @@ case "$ACTION" in
 esac
 npm run check
 npm run check:server
+npm run check:seo
 npm run check:deploy
 STAGING="$(mktemp -d /tmp/codex-reset-package.XXXXXX)"
 trap 'rm -rf "$STAGING"' EXIT

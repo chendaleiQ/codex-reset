@@ -10,7 +10,8 @@
     "check": "node tools/check.js",
     "check:server": "node tools/check-server.js",
     "check:deploy": "node tools/check-deploy.js",
-    "deploy": "bash deploy/remote-deploy.sh"
+    "deploy": "bash deploy/remote-deploy.sh",
+    "check:seo": "node tools/check-seo.js"
   },
   "engines": {
     "node": ">=18"

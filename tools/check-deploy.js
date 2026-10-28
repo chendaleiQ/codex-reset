@@ -1,17 +1,20 @@
 #!/usr/bin/env node
+// Fixture test for the public release verifier: every failure mode it must reject.
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const http = require('node:http');
 const { verifyDeployment } = require('./verify-deployment');
 
-const html = '<!doctype html><title>Deployment fixture</title>';
+const shell = '<!doctype html><html><head><!--seo-head--><title>Codex Reset</title></head><body><main id="main"><!--seo-body--></main></body></html>';
+const page = '<!doctype html><html lang="zh-Hans"><head><title>Codex 重置追踪：今天会重置吗？</title><link rel="canonical" href="/"></head><body><main><h1>Codex 今天会重置吗？</h1></main></body></html>';
 const script = 'console.log("release fixture");';
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const manifest = {
   id: '20261019T100000Z-123456789abc', commit: 'a'.repeat(40), sha256: 'b'.repeat(64), dirty: false,
-  files: { 'public/index.html': hash(html), 'public/js/main.js': hash(script) },
+  files: { 'public/index.html': hash(shell), 'public/js/main.js': hash(script) },
 };
 let fault;
+
 const server = http.createServer((req, res) => {
   if (req.url === '/__health') {
     const release = { ...manifest };
@@ -23,7 +26,16 @@ const server = http.createServer((req, res) => {
   if (req.url === '/api/feed?locale=zh') return res.end(JSON.stringify({ tweets: fault === 'empty-feed' ? [] : [{ id: '1' }] }));
   if (fault === 'http-error' && req.url === '/status') { res.writeHead(502); return res.end('Bad Gateway'); }
   if (req.url === '/js/main.js') return res.end(fault === 'stale-asset' ? 'old script' : script);
-  res.end(html);
+  if (req.url === '/robots.txt') {
+    res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
+    return res.end('User-agent: *\nAllow: /\n\nSitemap: http://127.0.0.1/sitemap.xml\n');
+  }
+  if (req.url === '/sitemap.xml') {
+    res.writeHead(200, { 'content-type': 'application/xml; charset=utf-8' });
+    return res.end('<?xml version="1.0"?><urlset></urlset>');
+  }
+  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+  res.end(page);
 });
 
 server.listen(0, '127.0.0.1', async () => {

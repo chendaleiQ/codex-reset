@@ -1,0 +1,537 @@
+/* ============================================================================
+   Codex Reset — crawlable surface
+
+   Two jobs, one vocabulary:
+
+   1. `.ssr` is the first paint the server hands a crawler (and a visitor
+      before the app boots). It is deliberately close to the app's own
+      overview so the handover does not jump.
+   2. `.seo-guide`, `.seo-related` and `.doc` are permanent reading surfaces:
+      they stay on the page after the app mounts.
+
+   Both use the same printed-signage language as the rest of the site: hairline
+   rules, uppercase meta labels, ink on ground, one accent line colour.
+   ========================================================================= */
+
+/* --- shared reading rhythm ------------------------------------------------ */
+
+.ssr,
+.seo-guide,
+.seo-related,
+.doc {
+  color: var(--ink);
+}
+
+.ssr h1,
+.doc-article h1 {
+  margin: 0 0 var(--s3);
+}
+
+.ssr-eyebrow {
+  margin: 0 0 var(--s2);
+  font-size: var(--t-meta);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.ssr-lead,
+.doc-lead {
+  margin: 0 0 var(--s5);
+  max-width: 62ch;
+  font-size: var(--t-lead);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+.ssr p,
+.doc p {
+  max-width: 68ch;
+}
+
+/* --- first paint: numbers ------------------------------------------------- */
+
+.ssr-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1px;
+  margin: 0 0 var(--s4);
+  background: var(--hair);
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ssr-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--s4) var(--s5);
+  background: var(--surface);
+}
+
+.ssr-stat-label {
+  font-size: var(--t-meta);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  color: var(--ink-3);
+}
+
+.ssr-stat-value {
+  font-size: var(--t-figure);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ssr-stat-note {
+  font-size: var(--t-meta);
+  color: var(--ink-4);
+}
+
+.ssr-note,
+.ssr-updated {
+  margin: 0 0 var(--s5);
+  font-size: var(--t-meta);
+  color: var(--ink-4);
+}
+
+.ssr-signal {
+  padding: var(--s3) var(--s4);
+  border-left: 3px solid var(--line-cobalt);
+  background: var(--wash);
+  border-radius: 0 6px 6px 0;
+}
+
+/* --- first paint: record rows -------------------------------------------- */
+
+.ssr-section {
+  margin: var(--s5) 0 0;
+  padding-top: var(--s4);
+  border-top: 1px solid var(--hair);
+}
+
+.ssr-section h2 {
+  margin: 0 0 var(--s3);
+  font-size: var(--t-ui);
+}
+
+.ssr-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ssr-row {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) auto auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--s2) var(--s3);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hair);
+  font-size: var(--t-ui);
+}
+
+.ssr-row:last-child {
+  border-bottom: 0;
+}
+
+.ssr-row time {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.ssr-row-zone,
+.ssr-row-gap {
+  font-size: var(--t-meta);
+  color: var(--ink-4);
+}
+
+.ssr-row-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-3);
+}
+
+.ssr-more {
+  margin: var(--s3) 0 0;
+  font-size: var(--t-ui);
+}
+
+.ssr-more a {
+  color: var(--line-cobalt);
+  font-weight: 650;
+}
+
+/* --- first paint: table (timeline route) --------------------------------- */
+
+.ssr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-ui);
+}
+
+.ssr-table caption {
+  text-align: left;
+  padding-bottom: var(--s2);
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.ssr-table th,
+.ssr-table td {
+  padding: 9px 12px 9px 0;
+  border-bottom: 1px solid var(--hair);
+  text-align: left;
+  vertical-align: top;
+}
+
+.ssr-table th {
+  font-size: var(--t-meta);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.ssr-table td:first-child {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* --- first paint: status -------------------------------------------------- */
+
+.ssr-status-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1px;
+  background: var(--hair);
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ssr-status {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  background: var(--surface);
+  font-size: var(--t-ui);
+}
+
+.ssr-status-state {
+  font-size: var(--t-meta);
+  font-weight: 650;
+}
+
+.ssr-status--ok .ssr-status-state {
+  color: var(--ok-text);
+}
+
+.ssr-status--bad .ssr-status-state {
+  color: var(--bad-text);
+}
+
+/* --- questions and answers ----------------------------------------------- */
+
+.ssr-faq,
+.doc-faq {
+  margin: var(--s4) 0 0;
+}
+
+.ssr-faq dt,
+.doc-faq dt {
+  margin-top: var(--s4);
+  font-weight: 700;
+  font-size: var(--t-body);
+}
+
+.ssr-faq dd,
+.doc-faq dd {
+  margin: var(--s2) 0 0;
+  max-width: 68ch;
+  color: var(--ink-2);
+  line-height: 1.65;
+}
+
+/* --- permanent block: guides --------------------------------------------- */
+
+.seo-guide {
+  margin-top: var(--s8);
+  padding-top: var(--s6);
+  border-top: 1px solid var(--hair);
+}
+
+.seo-guide h2 {
+  margin: 0 0 var(--s2);
+}
+
+.seo-guide h3 {
+  margin: var(--s6) 0 0;
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.seo-guide-lead {
+  margin: 0 0 var(--s5);
+  max-width: 66ch;
+  color: var(--ink-2);
+  line-height: 1.65;
+}
+
+.guide-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--s4);
+}
+
+.guide-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--s5);
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  background: var(--surface);
+  text-decoration: none;
+  transition: border-color 140ms var(--ease), transform 140ms var(--ease);
+}
+
+.guide-card:hover {
+  border-color: var(--hair-strong);
+  transform: translateY(-1px);
+}
+
+.guide-card-title {
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.guide-card-tagline {
+  font-size: var(--t-ui);
+  color: var(--ink-3);
+}
+
+/* --- permanent block: related links -------------------------------------- */
+
+.seo-related {
+  margin-top: var(--s7);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--hair);
+}
+
+.seo-related h2 {
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 var(--s3);
+}
+
+.seo-related ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--t-ui);
+}
+
+/* --- standalone documents (guides, 404) ---------------------------------- */
+
+.doc {
+  padding-top: var(--s6);
+}
+
+.doc-crumbs {
+  margin-bottom: var(--s5);
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+.doc-crumbs a {
+  color: var(--ink-3);
+  text-decoration: none;
+}
+
+.doc-article h1 {
+  max-width: 22ch;
+}
+
+.doc-updated {
+  margin: 0 0 var(--s6);
+  font-size: var(--t-meta);
+  color: var(--ink-4);
+}
+
+.doc-section {
+  margin-top: var(--s7);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--hair);
+}
+
+.doc-section h2 {
+  margin: 0 0 var(--s4);
+  font-size: var(--t-title);
+}
+
+.doc-section p,
+.doc-section li {
+  line-height: 1.7;
+  color: var(--ink-2);
+}
+
+.doc-section ul {
+  max-width: 68ch;
+  padding-left: 1.1em;
+}
+
+.doc-section li + li {
+  margin-top: var(--s2);
+}
+
+.doc-sources {
+  margin-top: var(--s7);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--hair);
+  font-size: var(--t-ui);
+}
+
+.doc-sources h2 {
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 var(--s3);
+}
+
+.doc-sources ul {
+  margin: 0;
+  padding-left: 1.1em;
+  color: var(--ink-3);
+}
+
+.doc-related {
+  margin-top: var(--s7);
+  padding: var(--s5);
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.doc-related h2 {
+  margin: 0 0 var(--s3);
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.doc-related ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--s2);
+  font-size: var(--t-ui);
+}
+
+.doc-code {
+  margin: 0;
+  font-size: 64px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--hair-strong);
+}
+
+.doc-button {
+  display: inline-block;
+  margin-top: var(--s3);
+  padding: 10px 18px;
+  border-radius: 8px;
+  background: var(--reversed-bg);
+  color: var(--reversed-ink);
+  font-size: var(--t-ui);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+/* --- the app mount ------------------------------------------------------- */
+
+.app-mount {
+  display: contents;
+}
+
+/* --- small screens ------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .ssr-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .ssr-row-text {
+    grid-column: 1 / -1;
+    white-space: normal;
+  }
+
+  .ssr-stat-value {
+    font-size: var(--t-num);
+  }
+
+  .guide-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .doc-article h1 {
+    max-width: none;
+  }
+}
+
+/* A feed row carries a time and a sentence, not an interval. */
+.ssr-row--post {
+  grid-template-columns: minmax(120px, auto) auto minmax(0, 1fr);
+}
+
+/* --- the 28-day run ------------------------------------------------------ */
+
+.plan-table td:first-child {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  width: 4ch;
+}
+
+.plan-table td:nth-child(2) {
+  white-space: nowrap;
+}
+
+.plan-kind {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--wash);
+  font-size: var(--t-meta);
+  font-weight: 650;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.plan-empty td {
+  color: var(--ink-4);
+}

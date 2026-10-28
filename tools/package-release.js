@@ -25,7 +25,7 @@ function copy(relative) {
     files[relative] = digest(data);
   }
 }
-for (const file of ['server.js', 'package.json', 'public', 'deploy']) copy(file);
+for (const file of ['server.js', 'package.json', 'seo', 'public', 'deploy']) copy(file);
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const sha256 = digest(JSON.stringify(files));
 const createdAt = new Date().toISOString();
