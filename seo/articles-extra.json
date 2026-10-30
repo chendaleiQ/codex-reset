@@ -1,0 +1,764 @@
+{
+  "codex-usage-limit-today": {
+    "zh": {
+      "title": "Codex 今天额度用完了吗？先分清 5 小时窗口和每周额度",
+      "description": "怎么在桌面端、网页版和 CLI 里查 Codex 当前额度还剩多少、下一次恢复在几点，判断「今天用完了」到底是哪一层用尽。",
+      "h1": "Codex 今天额度用完了吗？先分清两层额度",
+      "lead": "说「今天额度用完了」时，多数人把两层限制混成了一层：5 小时滚动窗口，和 7 天周期的总量。先确认是哪一层用尽，才知道下一次恢复在几点——两层的恢复逻辑完全不同。",
+      "sections": [
+        {
+          "h2": "一、两层限制分别计算，先到先停",
+          "paragraphs": [
+            "5 小时窗口从你发出第一条请求开始计时，到期整体刷新，窗口内没用完的额度不结转。它每天都在发生，和有没有人宣布重置无关。",
+            "每周额度是另一层：周期更长，重置时间点在账号里是固定的，不随你的打卡时间滚动。"
+          ],
+          "list": [
+            "5 小时窗口：滚动、频繁、恢复快",
+            "每周额度：周期长、恢复点固定",
+            "两层同时生效，任何一层见底都会停止请求"
+          ]
+        },
+        {
+          "h2": "二、三个地方能看到剩余额度",
+          "paragraphs": [
+            "账号侧最准的是「设置 → 用量」，桌面端和网页版都在这里；CLI 里输入 /usage 也能看到当前窗口的剩余比例与到期时间。",
+            "本站给的是另一层信息：全局重置发生过几次、现在离上一次多久。两边的数字放在一起看，才能分出「我的窗口到期」和「全站真的重置了」。"
+          ],
+          "list": [
+            "设置 → 用量：当前窗口剩余与到期时间",
+            "CLI /usage：同一份信息的命令行版本",
+            "本站时间线：全局重置的历史与间隔"
+          ]
+        },
+        {
+          "h2": "三、判断「是不是今天用完了」的最短路径",
+          "paragraphs": [
+            "先看 /usage 里的到期时间：如果只剩几分钟，等一等就会恢复；如果到期时间还很远而额度已是 0，那就是周额度见底，今天不会再恢复。",
+            "再看本站时间线：如果「全局重置」刚发生而你的额度没变，通常是缓存或账号侧延迟，不是没生效——记录更新和账号刷新不是同步的。"
+          ]
+        }
+      ],
+      "faq": [
+        {
+          "q": "5 小时窗口是整点重置吗？",
+          "a": "不是。窗口从你第一条请求开始滚动，每个人起点不同，重置时刻也不同。"
+        },
+        {
+          "q": "额度没用完会留到下一窗口吗？",
+          "a": "不会。窗口到期整体刷新，未用完的部分不结转。"
+        },
+        {
+          "q": "为什么网站说重置了，我的额度没变？",
+          "a": "全局重置和账号额度刷新之间有延迟，也可能你看到的是「已宣布未确认」。先看 /usage 的实际到期时间，再对照时间线上事件的状态。"
+        }
+      ],
+      "related": [
+        "codex-5-hour-limit",
+        "codex-weekly-limit"
+      ],
+      "sources": [
+        {
+          "label": "OpenAI Help Center",
+          "url": "https://help.openai.com/"
+        }
+      ]
+    },
+    "en": {
+      "title": "Codex quota used up today? Separate the 5-hour window from the weekly cap",
+      "description": "How to check how much Codex quota is left and when it refills — from the desktop app, the web app and the CLI — and which of the two limits actually ran out.",
+      "h1": "Is today's Codex quota gone? Which limit ran out first",
+      "lead": "People usually collapse two different limits into one sentence: the rolling 5-hour window and the 7-day cap. Which one ran out decides when you get quota back — the two refill on completely different clocks.",
+      "sections": [
+        {
+          "h2": "1. Two limits, calculated separately, first one to zero wins",
+          "paragraphs": [
+            "The 5-hour window starts at your first request, refreshes as a block when it expires, and carries nothing over. It happens every day and has nothing to do with anyone announcing a reset.",
+            "The weekly cap is a separate layer with a longer cycle and a fixed refill moment in your account — it does not roll with your working hours."
+          ],
+          "list": [
+            "5-hour window: rolling, frequent, refills quickly",
+            "Weekly cap: long cycle, fixed refill point",
+            "Both apply at once — either one hitting zero stops requests"
+          ]
+        },
+        {
+          "h2": "2. Three places to read the remaining quota",
+          "paragraphs": [
+            "The account side is the source of truth: Settings → Usage in the desktop and web apps, or /usage in the CLI, showing the current window's remainder and expiry.",
+            "This site supplies the other half: how often global resets happen and how long ago the last one was. Reading both is how you tell 'my window expired' from 'the service actually reset'."
+          ],
+          "list": [
+            "Settings → Usage: remainder and expiry for the window",
+            "CLI /usage: the same data on the command line",
+            "This site's timeline: history and spacing of global resets"
+          ]
+        },
+        {
+          "h2": "3. The shortest path to 'is it gone for today?'",
+          "paragraphs": [
+            "Read the expiry in /usage first. Minutes away means it comes back shortly; far away with a zero balance means the weekly cap is spent and it will not recover today.",
+            "Then check the timeline. If a global reset just landed and your quota did not move, that is usually propagation delay, not a broken reset."
+          ]
+        }
+      ],
+      "faq": [
+        {
+          "q": "Does the 5-hour window reset on the hour?",
+          "a": "No. It rolls from your first request, so the reset time is personal."
+        },
+        {
+          "q": "Does unused quota carry over?",
+          "a": "No. The window refreshes as a block; the remainder does not move forward."
+        },
+        {
+          "q": "The site says a reset happened but my quota is unchanged — why?",
+          "a": "Propagation lag, or the entry is announced-but-unverified. Check the expiry in /usage, then the event status on the timeline."
+        }
+      ],
+      "related": [
+        "codex-5-hour-limit",
+        "codex-weekly-limit"
+      ],
+      "sources": [
+        {
+          "label": "OpenAI Help Center",
+          "url": "https://help.openai.com/"
+        }
+      ]
+    }
+  },
+  "codex-weekly-limit": {
+    "zh": {
+      "title": "Codex 每周额度怎么算？什么时候重置、和 5 小时窗口什么关系",
+      "description": "Codex 的每周额度是什么、从哪天开始算、重置点为什么每人不同，以及它和 5 小时窗口的先后关系。",
+      "h1": "Codex 每周额度：怎么算、何时重置",
+      "lead": "除了 5 小时窗口，Codex 还有一层以周为周期的总量限制。它决定了「再怎么等窗口也刷不出来」的那种情况，也是很多人误判成「被限流」的原因。",
+      "sections": [
+        {
+          "h2": "一、周额度是另一层闸门",
+          "paragraphs": [
+            "5 小时窗口限制的是短时间内的爆发用量，周额度限制的是长周期的总量。两层同时生效，任何一层见底都会停止请求。",
+            "所以「窗口明明刚刷新，怎么还是不能用」的答案通常是：周额度见底了，刷新窗口对它没有影响。"
+          ]
+        },
+        {
+          "h2": "二、重置时点在账号里，不在网站上",
+          "paragraphs": [
+            "周额度的重置时刻以你账号里显示的为准，可能每人不同，不跟随打卡时间滚动，也不是整点刷新。",
+            "本站能提供的是全局重置的记录：OpenAI 对所有人统一重置时，那一次会同时影响 5 小时窗口和周额度，并可能改变下一个周期重置点。"
+          ],
+          "list": [
+            "以账号内显示的重置时间为准",
+            "全局重置可能改变周额度重置点",
+            "网站记录的是全局事件，不代替账号数据"
+          ]
+        },
+        {
+          "h2": "三、两层都盯，才不会被数据误导",
+          "paragraphs": [
+            "只看窗口的人，容易在周额度见底时以为自己被限流；只看周额度的人，会误以为短时爆发没有上限。",
+            "实践上：日常用 /usage 的窗口剩余判断「今天还能不能干活」，周维度用账号里的重置点来安排跑批和大任务。"
+          ]
+        }
+      ],
+      "faq": [
+        {
+          "q": "周额度用完，等窗口刷新会恢复吗？",
+          "a": "不会。两层分别计算，窗口刷新不影响已见底的周额度。"
+        },
+        {
+          "q": "每人周额度重置时间一样吗？",
+          "a": "不一定。以你账号里显示的重置时间为准。"
+        },
+        {
+          "q": "全局重置会影响周额度吗？",
+          "a": "一次完整的全局重置会同时刷新窗口和周期额度，并可能改变下一个周期重置点。"
+        }
+      ],
+      "related": [
+        "codex-5-hour-limit",
+        "codex-usage-limit-today"
+      ],
+      "sources": [
+        {
+          "label": "OpenAI Help Center",
+          "url": "https://help.openai.com/"
+        }
+      ]
+    },
+    "en": {
+      "title": "Codex weekly limit: how it works and when it refills",
+      "description": "What the weekly Codex cap is, why its refill moment differs per account, and how it interacts with the rolling 5-hour window.",
+      "h1": "The Codex weekly cap: how it works and when it refills",
+      "lead": "On top of the 5-hour window there is a second gate measured in weeks. It explains the 'I waited out the window and still cannot work' case people misread as rate limiting.",
+      "sections": [
+        {
+          "h2": "1. A second gate, not a bigger window",
+          "paragraphs": [
+            "The 5-hour window caps bursts; the weekly cap caps the long-run total. Both apply, and either hitting zero stops requests.",
+            "So 'the window just refreshed and I still cannot work' usually means the weekly cap is spent; a window refresh does nothing for it."
+          ]
+        },
+        {
+          "h2": "2. The refill moment lives in your account",
+          "paragraphs": [
+            "The weekly refill time is whatever your account shows. It can differ per account, does not roll with working hours, and is not an on-the-hour event.",
+            "What this site adds is the record of global resets: a full reset refreshes both the window and the weekly cap, and can move the next refill point."
+          ],
+          "list": [
+            "Trust the refill time shown in your account",
+            "A global reset can move the weekly refill point",
+            "This site records global events, not your account state"
+          ]
+        },
+        {
+          "h2": "3. Watch both layers or the data misleads you",
+          "paragraphs": [
+            "Watching only the window makes a spent weekly cap feel like rate limiting; watching only the cap hides how fast a burst gets cut off.",
+            "In practice: /usage for 'can I work today', the weekly refill point for scheduling long runs."
+          ]
+        }
+      ],
+      "faq": [
+        {
+          "q": "If the weekly cap is spent, will the 5-hour window restore it?",
+          "a": "No. They are calculated separately; a window refresh does not restore the weekly cap."
+        },
+        {
+          "q": "Is the weekly refill time the same for everyone?",
+          "a": "Not necessarily. Use the time shown in your own account."
+        },
+        {
+          "q": "Does a global reset affect the weekly cap?",
+          "a": "A full global reset refreshes both the window and the cycle allowance, and may move the next refill point."
+        }
+      ],
+      "related": [
+        "codex-5-hour-limit",
+        "codex-usage-limit-today"
+      ],
+      "sources": [
+        {
+          "label": "OpenAI Help Center",
+          "url": "https://help.openai.com/"
+        }
+      ]
+    }
+  },
+  "codex-http-429": {
+    "zh": {
+      "title": "Codex 报 429 too many requests 是什么？和额度用尽是两件事",
+      "description": "Codex 返回 429 的常见原因：短时间请求过快、并发过高，还是额度已经见底；怎么区分、怎么处理、什么时候等一等就好。",
+      "h1": "Codex 429 报错：请求过快还是额度用尽",
+      "lead": "429 只说明「现在这个请求被拒了」，不告诉你原因。先分清是速率限制、并发限制，还是额度见底——三种情况的处理方式完全不同，等错方向会白等。",
+      "sections": [
+        {
+          "h2": "一、429 有三种常见来源",
+          "paragraphs": [
+            "第一种是短时速率限制：几秒内连续发请求、脚本批量调用，被按速率拒掉。它通常在很短时间内自行恢复。",
+            "第二种是并发限制：同时开多个会话或多个 agent 并行跑，超过账号允许的并发数。降低并行度即可。",
+            "第三种其实是额度见底：5 小时窗口或周额度用完时，后续请求也会以失败告终。它不会因为等几分钟就好。"
+          ],
+          "list": [
+            "短时速率：几十秒到几分钟自愈",
+            "并发过高：降低并行数即可恢复",
+            "额度见底：要等窗口或周额度刷新"
+          ]
+        },
+        {
+          "h2": "二、怎么在一分钟内分清",
+          "paragraphs": [
+            "打开 /usage（或设置 → 用量）看剩余额度：如果余额是 0，问题就是额度，别再重试；如果余额充足，那就是速率或并发。",
+            "再看失败的形态：偶发一两个失败 → 速率；一开多个会话就失败 → 并发；持续全部失败 → 先怀疑额度。"
+          ],
+          "list": [
+            "余额 0 → 额度问题",
+            "余额充足 + 偶发 → 速率",
+            "一并行就挂 → 并发"
+          ]
+        },
+        {
+          "h2": "三、处理顺序",
+          "paragraphs": [
+            "先停下重试：连续重试会延长被限的时间，也会浪费已经恢复的窗口。",
+            "把并行降到 1、间隔拉长到数秒，再试一次；仍然失败才去看额度。如果确认是额度，等窗口（分钟级）或周额度（天级）；如果当天有全局重置，刷新后就能继续。"
+          ]
+        }
+      ],
+      "faq": [
+        {
+          "q": "429 是不是意味着账号被封了？",
+          "a": "不是。它是限流信号，常见于速率、并发或额度见底；封禁会有完全不同的提示，且不通过这个报错表达。"
+        },
+        {
+          "q": "重试能解决 429 吗？",
+          "a": "立刻连续重试通常会让情况更糟。先降频、降并发，间隔几秒再试一次。"
+        },
+        {
+          "q": "额度显示还有，为什么仍然 429？",
+          "a": "那多半是速率或并发限制，不是额度；把请求间隔拉开、并行降到 1 再试。"
+        }
+      ],
+      "related": [
+        "codex-usage-limit-today",
+        "codex-quota-run-out"
+      ],
+      "sources": [
+        {
+          "label": "OpenAI Help Center",
+          "url": "https://help.openai.com/"
+        }
+      ]
+    },
+    "en": {
+      "title": "Codex 429 too many requests: rate limit or quota?",
+      "description": "What a 429 from Codex usually means — short-term rate limiting, concurrency, or an exhausted quota — how to tell them apart, and what to do first.",
+      "h1": "Codex 429: rate limit, concurrency, or quota",
+      "lead": "A 429 only says this request was refused; it does not say why. Separating rate limiting, concurrency and an exhausted quota matters because each one clears differently.",
+      "sections": [
+        {
+          "h2": "1. Three common sources",
+          "paragraphs": [
+            "Short-term rate limiting: rapid consecutive requests or a script firing in a loop. It usually clears within seconds to minutes.",
+            "Concurrency: several sessions or agents running in parallel above what the account allows. Lower the parallelism and it recovers.",
+            "Exhausted quota: when the 5-hour window or the weekly cap is spent, later requests fail too — and waiting a few minutes does not fix that."
+          ],
+          "list": [
+            "Rate limiting: self-clears in seconds to minutes",
+            "Concurrency: lower parallelism",
+            "Quota: wait for the window or weekly refresh"
+          ]
+        },
+        {
+          "h2": "2. Telling them apart in under a minute",
+          "paragraphs": [
+            "Open /usage (or Settings → Usage) and read the balance. Zero means quota — stop retrying. Plenty means rate or concurrency.",
+            "Then look at the shape of the failures: an occasional one is rate limiting; failing as soon as you open several sessions is concurrency; everything failing persistently points at quota first."
+          ],
+          "list": [
+            "Balance zero → quota",
+            "Balance fine + intermittent → rate",
+            "Fails on parallelism → concurrency"
+          ]
+        },
+        {
+          "h2": "3. What to do, in order",
+          "paragraphs": [
+            "Stop retrying first: repeated retries extend the limiting window and waste the quota you just got back.",
+            "Drop concurrency to one and space requests a few seconds apart, then try once. If it still fails, check the quota: a window refills in minutes, a weekly cap in days, and a live global reset clears both."
+          ]
+        }
+      ],
+      "faq": [
+        {
+          "q": "Does a 429 mean the account is banned?",
+          "a": "No. It is a throttling signal from rate, concurrency or quota; bans surface as different errors entirely."
+        },
+        {
+          "q": "Does retrying fix a 429?",
+          "a": "Immediate retries usually make it worse. Back off, lower concurrency, retry a few seconds later."
+        },
+        {
+          "q": "Quota shows a balance but I still get 429 — why?",
+          "a": "Most likely rate or concurrency, not quota. Space requests out and try with a single session."
+        }
+      ],
+      "related": [
+        "codex-usage-limit-today",
+        "codex-quota-run-out"
+      ],
+      "sources": [
+        {
+          "label": "OpenAI Help Center",
+          "url": "https://help.openai.com/"
+        }
+      ]
+    }
+  },
+  "codex-reset-time": {
+    "zh": {
+      "title": "Codex 几点重置？北京时间、窗口到期与全局重置的时刻怎么对",
+      "description": "Codex 的重置时间有三种口径：滚动窗口到期、周额度重置点、全局重置公布时间。分别对应哪个时刻、为什么没有统一钟点。",
+      "h1": "Codex 几点重置？三种时刻要分开看",
+      "lead": "「几点重置」这个问题没有单一答案：滚动窗口按你的第一次请求算，周额度有账号自己的重置点，全局重置则由 OpenAI 决定发布时刻。混着看一定会算错。",
+      "sections": [
+        {
+          "h2": "一、滚动窗口：不是整点，是你自己的起点",
+          "paragraphs": [
+            "窗口从你当天第一条请求开始计时，5 小时后整体刷新。所以下午 2:17 开始干活的人，重置点是晚上 7:17，而不是某个整点。",
+            "这也解释了两个人在同一个小时里看到「我重置了、你没有」——起点不同，节奏自然不同。"
+          ]
+        },
+        {
+          "h2": "二、周额度：账号里写死的时刻",
+          "paragraphs": [
+            "周额度的重置点是账号级信息，不随打卡时间滚动，也不因你多开几个窗口而改变。",
+            "一次完整的全局重置会刷新窗口和周期额度，并可能把这个周期重置点往后推——所以它不是一个永久固定的值。"
+          ],
+          "list": [
+            "窗口重置：起点 + 5 小时",
+            "周额度重置：账号显示为准",
+            "全局重置：可能改变周期重置点"
+          ]
+        },
+        {
+          "h2": "三、全局重置：只有发布时刻，没有钟点规律",
+          "paragraphs": [
+            "全局重置由 OpenAI 决定，宣布渠道通常是 Codex 负责人 Tibo 的 X 账号。历史记录里，两次之间的间隔从连续几天到一个多月都有，没有可预测的钟点。",
+            "北京时间只是显示口径：本站时间线把它换算成东八区，方便国内用户对照，但事件本身不按北京时间发生。"
+          ]
+        }
+      ],
+      "faq": [
+        {
+          "q": "Codex 每天固定几点重置？",
+          "a": "没有固定钟点。滚动窗口按你自己的起点算，全局重置不定期发生。"
+        },
+        {
+          "q": "为什么我和同事的重置时间不一样？",
+          "a": "5 小时窗口从各自第一条请求开始计时，起点不同，到期时间就不同。"
+        },
+        {
+          "q": "时间线上的时间是北京时间吗？",
+          "a": "时间线可按北京时间对照显示，但事件本身是 Open 端的公布时刻，不是按东八区触发。"
+        }
+      ],
+      "related": [
+        "codex-5-hour-limit",
+        "codex-reset"
+      ],
+      "sources": [
+        {
+          "label": "OpenAI Help Center",
+          "url": "https://help.openai.com/"
+        }
+      ]
+    },
+    "en": {
+      "title": "What time does Codex reset? Three different clocks",
+      "description": "Codex reset time has three meanings — the rolling window expiry, the weekly refill point and the moment a global reset is announced. Which one you mean changes the answer.",
+      "h1": "What time does Codex reset? Three clocks, not one",
+      "lead": "'What time does Codex reset' has no single answer: the window rolls from your first request, the weekly cap has an account-level refill point, and global resets happen when OpenAI announces them.",
+      "sections": [
+        {
+          "h2": "1. The rolling window is personal, not on the hour",
+          "paragraphs": [
+            "The window starts at your first request of the day and refreshes as a block five hours later. Someone starting at 2:17pm resets at 7:17pm — not on the hour.",
+            "That is why two people in the same hour can disagree about 'mine reset, yours did not' — different start times, different clocks."
+          ]
+        },
+        {
+          "h2": "2. The weekly refill point lives in the account",
+          "paragraphs": [
+            "The weekly cap's refill moment is account-level: it does not roll with working hours, and opening extra sessions does not change it.",
+            "A full global reset refreshes both the window and the cycle allowance, and can push that refill point later — so it is not permanently fixed."
+          ],
+          "list": [
+            "Window reset: your start time + 5 hours",
+            "Weekly refill: whatever your account shows",
+            "Global reset: can move the cycle refill point"
+          ]
+        },
+        {
+          "h2": "3. Global resets have an announcement time, not a schedule",
+          "paragraphs": [
+            "Global resets are decided by OpenAI and usually announced by Codex lead Tibo on X. In the recorded history the gaps run from consecutive days to a month or more — no predictable hour.",
+            "Display in a given timezone is only a convenience: the timeline can show Beijing time, but the event itself does not fire on that zone."
+          ]
+        }
+      ],
+      "faq": [
+        {
+          "q": "Does Codex reset at a fixed time every day?",
+          "a": "No fixed hour. The rolling window follows your own start time, and global resets are unscheduled."
+        },
+        {
+          "q": "Why is my reset time different from a colleague's?",
+          "a": "The 5-hour window starts at each person's first request, so the expiries differ."
+        },
+        {
+          "q": "Are the timeline times in Beijing time?",
+          "a": "The timeline can be read in Beijing time for convenience, but events fire at the source's announcement moment, not on that zone."
+        }
+      ],
+      "related": [
+        "codex-5-hour-limit",
+        "codex-reset"
+      ],
+      "sources": [
+        {
+          "label": "OpenAI Help Center",
+          "url": "https://help.openai.com/"
+        }
+      ]
+    }
+  },
+  "codex-reset-announcement": {
+    "zh": {
+      "title": "Codex 重置公告是真的吗？怎么判断「已宣布」和「已生效」",
+      "description": "网上说 Codex 今天重置了，怎么确认是官方公告、是真的生效还是只是预告？判断顺序、要看的原始信源，以及常见的三种以讹传讹。",
+      "h1": "Codex 重置公告：宣布 ≠ 生效",
+      "lead": "重置消息传得比重置本身快。「Tibo 发了条推」不等于额度已经刷新；把「已宣布」「待确认」「已确认」分开看，才不会白等一晚上。",
+      "sections": [
+        {
+          "h2": "一、先认准原始信源",
+          "paragraphs": [
+            "几乎每次都从 Codex 负责人 Tibo（@thsottiaux）的 X 账号开始，这是最早的信号；官方状态页会在故障相关的情况下补充说明。",
+            "二手转述（群聊截图、公众号、搬运视频）在传播中会丢失前提：把「某个地区、某部分用户」说成全员，把「正在修复」说成「已经重置」。"
+          ]
+        },
+        {
+          "h2": "二、再看有没有真的落地",
+          "paragraphs": [
+            "判断标准不是「有人宣布」，而是**你自己的 /usage 有没有回到上限**。全局重置在记录侧和账号侧之间有延迟，也可能分批推送。",
+            "本站的做法是把状态拆成三段：已宣布、待确认（有信号但未见落地证据）、已确认（有可核对的落地记录）。只有已确认才计入重置次数。"
+          ]
+        },
+        {
+          "h2": "三、三种最常见的以讹传讹",
+          "paragraphs": [
+            "一是把预告当已发生；二是把「窗口到期」当成「全局重置」；三是把局部实验当成全员。三种都会让人对重置的节奏产生错误预期。",
+            "反过来也成立：一次真正的重置如果没人截图，「没看到」也不代表没发生——以账号额度与时间线记录为准。"
+          ],
+          "list": [
+            "预告 ≠ 生效",
+            "窗口到期 ≠ 全局重置",
+            "局部 ≠ 全员",
+            "没看到 ≠ 没发生"
+          ]
+        }
+      ],
+      "faq": [
+        {
+          "q": "看到推文说重置了，我的额度没变，是假的吗？",
+          "a": "不一定。可能是分批推送或记录延迟；以你自己 /usage 的余额为准。"
+        },
+        {
+          "q": "状态页没更新是不是就没重置？",
+          "a": "状态页主要覆盖故障与服务事件，重置公告不一定写在那里；以公告账号与记录为准。"
+        },
+        {
+          "q": "这里为什么要分「已确认」和「待确认」？",
+          "a": "因为记录的价值就在于能区分「宣布了」和「真的到账」，混在一起就会给出错误的概率。"
+        }
+      ],
+      "related": [
+        "codex-reset",
+        "codex-notifications"
+      ],
+      "sources": [
+        {
+          "label": "OpenAI Status",
+          "url": "https://status.openai.com/"
+        }
+      ]
+    },
+    "en": {
+      "title": "Is the Codex reset announcement real? Announced vs landed",
+      "description": "Someone says Codex reset today — how to confirm it came from an official source, and whether it actually landed or was only a teaser, plus three common ways these claims get mangled.",
+      "h1": "Codex reset announcements: announced is not landed",
+      "lead": "Reset news travels faster than the reset. A post from Tibo does not mean your quota has refreshed; keeping announced, pending and verified apart is what stops you waiting all night.",
+      "sections": [
+        {
+          "h2": "1. Start with the original source",
+          "paragraphs": [
+            "Almost every reset starts with Codex lead Tibo (@thsottiaux) on X, the earliest signal available; the official status page adds context when there is an incident.",
+            "Relays lose the qualifier in transit: a partial rollout becomes 'everyone', a fix in progress becomes 'already reset'."
+          ]
+        },
+        {
+          "h2": "2. Then check whether it actually landed",
+          "paragraphs": [
+            "The test is not the announcement but whether your own /usage is back at full. There is lag between the record side and the account side, and rollouts can be staged.",
+            "This site splits the state into three: announced, pending (a signal but no landed evidence), and verified (a checkable landing record). Only verified entries count toward the reset count."
+          ]
+        },
+        {
+          "h2": "3. Three recurring distortions",
+          "paragraphs": [
+            "A teaser taken as done; a window expiry mistaken for a global reset; a partial experiment reported as global. All three distort your sense of cadence.",
+            "The inverse also happens: a real reset nobody screenshotted. 'I did not see it' does not mean it did not happen — go by account quota and the timeline."
+          ],
+          "list": [
+            "Teaser ≠ landed",
+            "Window expiry ≠ global reset",
+            "Partial ≠ global",
+            "Not seen ≠ not happened"
+          ]
+        }
+      ],
+      "faq": [
+        {
+          "q": "A post says it reset but my quota did not change — is the post fake?",
+          "a": "Not necessarily: staged rollouts and record lag are real. Use your own /usage balance as the test."
+        },
+        {
+          "q": "If the status page is quiet, was there no reset?",
+          "a": "The status page covers service incidents; reset announcements are not always posted there. Go by the announcement account and the record."
+        },
+        {
+          "q": "Why split verified from pending?",
+          "a": "Because the value of a record is telling 'announced' apart from 'landed'. Blending them produces wrong probabilities."
+        }
+      ],
+      "related": [
+        "codex-reset",
+        "codex-notifications"
+      ],
+      "sources": [
+        {
+          "label": "OpenAI Status",
+          "url": "https://status.openai.com/"
+        }
+      ]
+    }
+  },
+  "codex-reset-faq": {
+    "zh": {
+      "title": "Codex 重置常见问题合集：每天重置吗、几点、额度没变怎么办",
+      "description": "把关于 Codex 额度重置最常被问到的 8 个问题集中回答一遍：频率、时间、公告真伪、额度没变化、窗口与周额度的区别。",
+      "h1": "Codex 重置常见问题（合集）",
+      "lead": "同一个问题每天在群里被问一遍。这里把 8 个高频问题集中答掉，每条都指向更详细的那一页，不重复铺开。",
+      "sections": [
+        {
+          "h2": "一、频率与时间",
+          "paragraphs": [
+            "5 小时窗口每天会自然到期多次，这是常态；全局重置不定期，间隔从连续几天到一个多月都有，没有固定钟点。",
+            "具体时刻请以你自己账号里的到期时间为准——每个人的窗口起点不同。"
+          ],
+          "list": [
+            "窗口：滚动、每天多次",
+            "全局重置：不定期、无固定钟点",
+            "周额度：账号里的固定重置点"
+          ]
+        },
+        {
+          "h2": "二、公告与到账",
+          "paragraphs": [
+            "判断重置有没有到账，看 /usage 而不是看转述；本站时间线把「已宣布」「待确认」「已确认」分开，只有已确认才计入次数。",
+            "如果宣布了但额度没变，先等几分钟，再确认你看到的是不是「预告」而不是「已生效」。"
+          ]
+        }
+      ],
+      "faq": [
+        {
+          "q": "Codex 每天都重置吗？",
+          "a": "5 小时窗口每天会到期多次，但这不等于「全局重置」；全局重置是不定期事件。"
+        },
+        {
+          "q": "重置有固定时间吗？",
+          "a": "没有。窗口按你的起点滚动，全局重置由 OpenAI 决定宣布时刻。"
+        },
+        {
+          "q": "额度显示没用完却请求失败，是重置的问题吗？",
+          "a": "更可能是速率或并发限制，先降频再试；额度问题会直接体现在余额上。"
+        },
+        {
+          "q": "周额度和 5 小时窗口是什么关系？",
+          "a": "两层分别计算、同时生效，任何一层见底都会停止请求。"
+        },
+        {
+          "q": "宣布重置了但我没变化，怎么办？",
+          "a": "确认公告是「已宣布」还是「已确认」，再看 /usage；分批推送和延迟都正常。"
+        },
+        {
+          "q": "备用额度会自动用掉吗？",
+          "a": "不会。备用额度需要你在用量设置里手动兑换，具体有效期以账号显示为准。"
+        },
+        {
+          "q": "这里的数据从哪来？",
+          "a": "公开渠道的重置公告与可核对的落地记录，以及站点自己维护的时间线；不采集任何账号隐私数据。"
+        },
+        {
+          "q": "需要注册或安装插件吗？",
+          "a": "不需要。站点只读，通知是可选的浏览器本地功能。"
+        }
+      ],
+      "related": [
+        "codex-reset",
+        "codex-5-hour-limit",
+        "codex-weekly-limit",
+        "codex-reset-announcement"
+      ],
+      "sources": [
+        {
+          "label": "OpenAI Status",
+          "url": "https://status.openai.com/"
+        }
+      ]
+    },
+    "en": {
+      "title": "Codex reset FAQ: daily resets, timing, and quota that will not move",
+      "description": "Eight frequently asked questions about Codex quota resets answered in one place: cadence, timing, announcement vs landed, and the window-versus-weekly distinction.",
+      "h1": "Codex reset FAQ",
+      "lead": "The same questions get asked in chat every day. Here are the eight most common ones, each pointing at the page with the detail instead of repeating it.",
+      "sections": [
+        {
+          "h2": "1. Cadence and timing",
+          "paragraphs": [
+            "The 5-hour window expires several times a day by design; global resets are irregular, with gaps from consecutive days to a month or more and no fixed hour.",
+            "For exact moments, use the expiry shown in your own account — window start times differ per person."
+          ],
+          "list": [
+            "Window: rolling, several times a day",
+            "Global resets: irregular, no fixed hour",
+            "Weekly cap: account-level refill point"
+          ]
+        },
+        {
+          "h2": "2. Announcement versus landing",
+          "paragraphs": [
+            "Check /usage, not a relayed quote. The timeline separates announced, pending and verified, and only verified entries count.",
+            "If an announcement is out but your quota has not moved, give it a few minutes and confirm you are not looking at a teaser."
+          ]
+        }
+      ],
+      "faq": [
+        {
+          "q": "Does Codex reset every day?",
+          "a": "The 5-hour window expires several times a day; that is not the same as a global reset, which is unscheduled."
+        },
+        {
+          "q": "Is there a fixed reset time?",
+          "a": "No. The window rolls from your start time; global resets follow OpenAI's announcement moment."
+        },
+        {
+          "q": "Quota looks available but requests fail — is that a reset issue?",
+          "a": "More likely rate or concurrency limiting. Back off first; a quota problem shows up in the balance."
+        },
+        {
+          "q": "How do the weekly cap and the 5-hour window interact?",
+          "a": "Separate layers applied together — whichever hits zero first stops requests."
+        },
+        {
+          "q": "It was announced but nothing changed for me — what now?",
+          "a": "Check whether it is announced or verified, then read /usage. Staged rollouts and lag are normal."
+        },
+        {
+          "q": "Is banked quota spent automatically?",
+          "a": "No. Banked resets are redeemed manually in usage settings; the expiry shown in your account governs."
+        },
+        {
+          "q": "Where does this site's data come from?",
+          "a": "Public reset announcements plus checkable landing records and a maintained timeline. No account data is collected."
+        },
+        {
+          "q": "Do I need an account or an extension?",
+          "a": "No. The site is read-only and notifications are a local, optional browser feature."
+        }
+      ],
+      "related": [
+        "codex-reset",
+        "codex-5-hour-limit",
+        "codex-weekly-limit",
+        "codex-reset-announcement"
+      ],
+      "sources": [
+        {
+          "label": "OpenAI Status",
+          "url": "https://status.openai.com/"
+        }
+      ]
+    }
+  }
+}

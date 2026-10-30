@@ -659,6 +659,9 @@ const ARTICLES = {
 
 };
 
+/* Long-tail pages added 2026-10-30 (data lives in articles-extra.json). */
+Object.assign(ARTICLES, require('./articles-extra.json'));
+
 const SLUGS = Object.keys(ARTICLES);
 
 /** Locale-neutral path for an article, e.g. `/guide/codex-reset`. */
