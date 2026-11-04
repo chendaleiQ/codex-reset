@@ -10,8 +10,18 @@
 # The site itself never runs this; it stays self-contained.
 set -euo pipefail
 
-# launchd gives a minimal PATH; Homebrew node and git live outside it.
+# launchd gives a minimal PATH, and this Mac's node comes from nvm, so resolve
+# the binary explicitly instead of hoping it is on PATH.
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+NODE_BIN="$(command -v node || true)"
+if [ -z "$NODE_BIN" ]; then
+  NODE_BIN="$(ls -d "$HOME"/.nvm/versions/node/*/bin/node 2>/dev/null | sort -V | tail -1 || true)"
+fi
+if [ -z "$NODE_BIN" ] || [ ! -x "$NODE_BIN" ]; then
+  echo "$LOG_PREFIX node not found; set CODEX_RESET_NODE"
+  exit 1
+fi
+NODE_BIN="${CODEX_RESET_NODE:-$NODE_BIN}"
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO"
@@ -49,7 +59,7 @@ notify_failure() {
   /usr/bin/osascript -e "display notification \"$1\" with title \"Codex Reset 数据采集失败\"" >/dev/null 2>&1 || true
 }
 
-if ! node tools/ingest.js --apply; then
+if ! "$NODE_BIN" tools/ingest.js --apply; then
   echo "$LOG_PREFIX ingest failed; ledger left untouched"
   notify_failure "抓取失败，站点保持上一次数据"
   exit 1
