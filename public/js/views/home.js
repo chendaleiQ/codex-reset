@@ -1,29 +1,16 @@
 /**
- * Reset overview, a calendar with selected-day detail, then the latest posts.
+ * Overview — the one question the site exists to answer, then the rhythm it is
+ * based on, the records themselves, and where the numbers come from.
  */
 
-import { clear, el, icon, link } from '../dom.js';
-import { buildSeries } from '../series.js';
-import { createSeriesCalendar } from '../series-calendar.js';
-import { feedView, forecastView, timelineView } from '../model.js';
+import { clear, el, icon, link, safeXUrl } from '../dom.js';
+import { forecastView, rhythmView, timelineView } from '../model.js';
 import { getState, subscribe } from '../store.js';
-import { formatDateTime, formatNumber, relativeTime } from '../format.js';
-import { getTimeZone, subscribeTimeZone, zoneLabel } from '../time-zone.js';
-import { feedItem, leaf } from './_parts.js';
+import { formatDateTime, formatDays, formatNumber } from '../format.js';
+import { getTimeZone, subscribeTimeZone, zoneShort } from '../time-zone.js';
+import { fact, factGrid, heatmapBlock, leaf, padHour } from './_parts.js';
 
-const DEFAULT_POSTS = 5;
-
-const KIND_FILTERS = [
-  ['all', 'radar.filter.all'],
-  ['signal', 'radar.kind.signal'],
-  ['reset', 'radar.kind.reset'],
-  ['banked', 'radar.kind.banked'],
-  ['limits', 'radar.kind.limits'],
-  ['boost', 'radar.kind.boost'],
-  ['codex', 'radar.kind.codex'],
-  ['candidate', 'radar.kind.candidate'],
-  ['other', 'radar.kind.other'],
-];
+const RECENT_LIMIT = 6;
 
 export async function render(host, app) {
   const state = getState();
@@ -31,213 +18,303 @@ export async function render(host, app) {
   const locale = app.locale;
   const cleanups = [];
 
-  let seed = null;
-  try {
-    seed = await fetch('/data/series.json').then((response) => (response.ok ? response.json() : null));
-  } catch {
-    seed = null;
-  }
-
   host.classList.add('home-page');
-  const headline = el('p', { class: 'home-update' }, t('common.loading'));
-  const subline = el('p', { class: 'home-update-note' }, '');
-  host.append(el('header', { class: 'home-heading' },
-    el('div', {}, el('p', { class: 'home-eyebrow' }, t('home.eyebrow')), el('h1', {}, t('home.title')), el('p', { class: 'lead' }, t('home.intro'))),
-    el('div', { class: 'home-latest' }, headline, subline),
-  ));
 
-  const stripHost = el('section', { class: 'reset-summary', 'aria-label': t('home.summary') });
-  const calendarHost = el('div');
-  const progress = el('span', { class: 'calendar-progress' });
-  const calendarNote = el('p', { class: 'calendar-footnote' });
-  const postHost = el('div');
-  const filterHost = el('div', { class: 'filters' });
+  /* --- 1. the verdict ------------------------------------------------------ */
 
-  let kindFilter = 'all';
-  let postLimit = DEFAULT_POSTS;
-  let postsSignature;
+  const answer = el('p', { class: 'verdict-answer' });
+  const number24 = el('div', { class: 'verdict-number', dataset: { confidence: 'low' } });
+  const number48 = el('div', { class: 'verdict-number', dataset: { confidence: 'low' } });
+  const facts = el('dl', { class: 'verdict-facts' });
+  const note = el('p', { class: 'verdict-note' });
+  const pending = el('div', { class: 'verdict-pending', hidden: true });
+  const updated = el('p', { class: 'verdict-updated field-hint' });
 
-  host.append(
-    stripHost,
-    el('section', { class: 'calendar-section', 'aria-labelledby': 'calendar-title' },
-      el('div', { class: 'calendar-section-head' },
-        el('div', {}, el('div', { class: 'calendar-title-row' }, el('h2', { id: 'calendar-title' }, t('series.title')), progress), el('p', {}, t('series.note'))),
-        link(seed?.source ?? 'https://x.com/thsottiaux', t('series.source'), { external: true, className: 'chit' }),
-      ), calendarHost, calendarNote,
+  const verdict = el(
+    'header',
+    { class: 'verdict' },
+    el('p', { class: 'verdict-eyebrow' }, t('verdict.eyebrow')),
+    el('h1', {}, t('home.title')),
+    answer,
+    el('div', { class: 'verdict-grid' }, number24, number48, facts),
+    note,
+    pending,
+    updated,
+  );
+
+  /* --- 2. the rhythm preview ---------------------------------------------- */
+
+  const rhythmHost = el('div', { class: 'rhythm-preview' });
+  const rhythmSection = leaf(t, {
+    title: t('home.rhythmTitle'),
+    note: t('home.rhythmNote'),
+    id: 'rhythm-preview',
+  }, rhythmHost);
+  const rhythmFoot = el(
+    'div',
+    { class: 'leaf-foot' },
+    link('/rhythm', t('home.viewRhythm'), { className: 'chit' }),
+  );
+
+  /* --- 3. recent records --------------------------------------------------- */
+
+  const recentHost = el('div');
+  const recentSection = leaf(t, {
+    title: t('home.recentTitle'),
+    note: t('home.recentNote'),
+  }, recentHost);
+  recentSection.append(
+    el('div', { class: 'leaf-foot' }, link('/timeline', t('home.allRecords'), { className: 'chit' })),
+  );
+
+  /* --- 4. method and data -------------------------------------------------- */
+
+  const methodSection = leaf(t, { title: t('home.methodTitle') });
+  methodSection.append(
+    el('p', { class: 'method-body' }, t('home.methodBody')),
+    el(
+      'div',
+      { class: 'method-links' },
+      link('/status', t('home.methodStatus'), { className: 'chit' }),
+      link('/rhythm', t('home.methodRhythm'), { className: 'chit' }),
+      link('/about', t('home.methodAbout'), { className: 'chit' }),
     ),
-    leaf(
-      t,
-      { title: t('home.posts'), note: t('home.postsNote'), tools: filterHost },
-      postHost,
+    el('h3', { class: 'guide-heading' }, t('home.guidesTitle')),
+    el(
+      'div',
+      { class: 'guide-links' },
+      guideLink('/guide/codex-reset', 'guide-reset', t('guide.reset')),
+      guideLink('/guide/codex-5-hour-limit', 'guide-limit', t('guide.limit')),
+      guideLink('/guide/codex-banked-reset', 'guide-banked', t('guide.banked')),
     ),
   );
-  const calendar = createSeriesCalendar(calendarHost, { locale, t });
 
-  function sources() {
-    return {
-      feed: state.feed ? feedView(state.feed) : null,
-      timeline: state.timeline ? timelineView(state.timeline) : null,
-      seed,
-    };
+  rhythmSection.append(rhythmFoot);
+  host.append(verdict, rhythmSection, recentSection, methodSection);
+
+  /* --- painting ----------------------------------------------------------- */
+
+  const pair = (node, percent, range, confidence) => {
+    node.replaceChildren(
+      el('span', { class: 'verdict-value' }, percent === null ? '—' : `${percent}%`),
+      el('span', { class: 'verdict-label' }, node === number24 ? t('verdict.window24') : t('verdict.window48')),
+      el(
+        'span',
+        { class: 'verdict-range' },
+        range === null ? t('verdict.rangeNone') : t('verdict.range', { range }),
+      ),
+      el('span', { class: 'verdict-confidence' }, t('verdict.confidenceLabel', { level: t(`verdict.confidence.${confidence}`) })),
+    );
+  };
+
+  function windowRange(startHour, endHour, timeZone) {
+    if (!Number.isFinite(startHour) || !Number.isFinite(endHour)) return null;
+    // Windows are published in UTC; shift the two edges into the visitor's zone.
+    const edges = [startHour, endHour].map((hour) => {
+      const stamp = Date.UTC(2026, 0, 5, hour);
+      const view = new Intl.DateTimeFormat('en-US', { timeZone, hour: '2-digit', hourCycle: 'h23' }).format(new Date(stamp));
+      return `${view}:00`;
+    });
+    return `${edges[0]}–${edges[1]}`;
   }
 
-  /* --- 1. did he post? ---------------------------------------------------- */
-
-  function paintHeadline() {
-    const feed = state.feed ? feedView(state.feed) : null;
-    clear(subline);
-    if (!feed) {
-      headline.textContent = t(state.feedError ? 'home.headline.none' : 'home.headline.loading');
-      if (state.feedError) subline.textContent = t('common.readError');
+  function paintVerdict() {
+    const view = forecastView(state.forecast, locale);
+    if (!view) {
+      answer.textContent = state.forecastError ? t('common.readError') : t('common.loading');
+      answer.dataset.tone = state.forecastError ? 'warn' : 'plain';
+      pair(number24, null, null);
+      pair(number48, null, null);
+      facts.replaceChildren();
+      note.textContent = '';
+      pending.hidden = true;
+      updated.textContent = '';
       return;
     }
-    const at = feed.latestPosts[0]?.at ?? feed.newestPostAt ?? null;
-    const when = relativeTime(at, Date.now(), locale);
-    const signal = feed.signal && feed.signal.active !== false ? feed.signal : null;
 
-    headline.dataset.tone = signal ? 'bad' : 'plain';
-    headline.textContent = signal
-      ? t('home.headline.signal')
-      : when
-        ? t('home.headline.posted', { when })
-        : t('home.headline.none');
-    subline.append(
-      document.createTextNode(at ? t('home.headline.at', { time: formatDateTime(at, locale) ?? '—' }) : t('common.unavailable')),
-      document.createTextNode(' · '),
-      document.createTextNode(
-        signal ? t('home.signal.active') : feed.signalNewestAt ? t('home.signal.last', { when: relativeTime(feed.signalNewestAt, Date.now(), locale) }) : t('home.signal.none'),
-      ),
-    );
-  }
+    const days = view.ageDays === null ? null : formatDays(view.ageDays, locale);
+    const share = view.wait?.shorterShare ?? null;
+    answer.dataset.tone = view.confidence === 'low' ? 'warn' : 'plain';
+    if (view.chance24 === null || view.chance48 === null) {
+      answer.textContent = t('verdict.answerNoData');
+    } else if (days === null) {
+      answer.textContent = t('verdict.answerNoData');
+    } else if (share === null) {
+      answer.textContent = t('verdict.answerNoShare', { p24: view.chance24, p48: view.chance48, days });
+    } else {
+      answer.textContent = t('verdict.answer', { p24: view.chance24, p48: view.chance48, days, share });
+    }
 
-  /* --- reset date and clearly labelled estimates ------------------------- */
+    for (const node of [number24, number48]) node.dataset.confidence = view.confidence ?? 'low';
+    pair(number24, view.chance24, view.range24, view.confidence ?? 'low');
+    pair(number48, view.chance48, view.range48, view.confidence ?? 'low');
 
-  function paintStrip() {
-    const feed = state.feed ? feedView(state.feed) : null;
-    const forecast = forecastView(state.forecast, locale);
-    clear(stripHost);
+    const lastReset = formatDateTime(view.lastResetAt, locale);
+    const waitDays = view.wait?.days ?? view.ageDays;
+    const localRange = view.window ? windowRange(view.window.startHour, view.window.endHour, getTimeZone()) : null;
+    const utcRange = view.window
+      ? `${padHour(view.window.startHour)}–${padHour(view.window.endHour)}`
+      : null;
 
-    const facts = el('dl', { class: 'reset-facts' });
-    facts.append(
+    facts.replaceChildren(
       fact(
-        t('home.lastVerifiedReset'),
-        formatDateTime(forecast?.lastResetAt, locale) ?? t('common.unavailable'),
-        forecast?.ageDays != null ? t('home.ageDays', { days: formatNumber(forecast.ageDays, locale, { maximumFractionDigits: 1, minimumFractionDigits: 1 }) }) : t('home.waitingData'),
+        t('verdict.lastReset'),
+        lastReset ?? t('common.unavailable'),
+        view.ageDays === null ? t('common.unavailable') : t('verdict.age', { days: formatDays(view.ageDays, locale) }),
       ),
-      fact(t('home.chance24'), forecast?.chance24 != null ? `${forecast.chance24}%` : t('common.unavailable'), t('home.estimate')),
-      fact(t('home.chance48'), forecast?.chance48 != null ? `${forecast.chance48}%` : t('common.unavailable'), t('home.estimate')),
+      fact(
+        t('verdict.waited'),
+        waitDays === null ? t('common.unavailable') : formatDays(waitDays, locale),
+        share === null
+          ? null
+          : t('verdict.waitNote', {
+              share,
+              median: view.wait?.medianDays === null ? '—' : formatDays(view.wait.medianDays, locale),
+            }),
+        { unit: waitDays === null ? null : locale === 'zh' ? '天' : 'days' },
+      ),
+      fact(
+        t('verdict.nextWindow'),
+        localRange ?? t('common.unavailable'),
+        view.window
+          ? t('verdict.windowUtc', { range: utcRange, share: view.window.share ?? '—' })
+          : t('verdict.windowNone'),
+      ),
     );
+    // The fact helper appends the note after the value; the window fact keeps the
+    // UTC label under it, which is exactly the contract's two-line shape.
 
-    stripHost.append(facts, el('div', { class: 'reset-summary-foot' },
-      el('p', {}, icon('info'), t('home.forecastNote')),
-      el('a', { href: '/timeline', class: 'chit' }, t('home.allResets'), icon('arrow')),
-    ));
-    if (state.forecastError) stripHost.append(el('p', { class: 'field-hint' }, t(forecast ? 'common.staleData' : 'common.readError')));
-    if (feed?.stale) stripHost.append(el('p', { class: 'field-hint' }, t('radar.stale')));
-  }
-
-  /* --- 2. one calendar, with the detail attached to its selected date ----- */
-
-  function paintSeries() {
-    const series = buildSeries(sources());
-    progress.textContent = t('series.recordedDays', { n: series.recordedDays, total: series.length });
-    calendar.update(series);
-    calendarNote.textContent = t('calendar.timezone', { zone: zoneLabel(getTimeZone(), locale) });
-    if (state.timelineError || state.feedError) calendarNote.append(document.createTextNode(` ${t('calendar.partial')}`));
-    else if (!state.timeline || !state.feed) calendarNote.append(document.createTextNode(` ${t('calendar.syncing')}`));
-  }
-
-  /* --- 3. the posts ------------------------------------------------------- */
-
-  function paintFilters() {
-    if (filterHost.childElementCount) {
-      filterHost.querySelectorAll('button').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.filter === kindFilter)));
-      return;
+    if (view.model) {
+      note.textContent = t('verdict.note', {
+        n: formatNumber(view.model.intervalSample, locale),
+        level: t(`verdict.confidence.${view.confidence ?? 'low'}`),
+      });
+    } else {
+      note.textContent = t('verdict.noteNoSample');
     }
-    filterHost.replaceChildren();
-    for (const [id, key] of KIND_FILTERS) {
-      filterHost.append(
+
+    if (view.mode === 'pending' && view.pending) {
+      const url = safeXUrl(view.pending.source_url);
+      pending.hidden = false;
+      pending.replaceChildren(
         el(
-          'button',
-          {
-            type: 'button',
-            class: 'filter',
-            dataset: { filter: id },
-            'aria-pressed': String(kindFilter === id),
-            onclick: () => {
-              kindFilter = id;
-              postLimit = DEFAULT_POSTS;
-              paintFilters();
-              paintPosts();
-            },
-          },
-          t(key),
+          'p',
+          {},
+          t('verdict.pendingNote', {
+            time: formatDateTime(view.pending.at, locale) ?? t('common.unavailable'),
+            quote: String(view.pending.quote ?? '').slice(0, 120),
+          }),
         ),
+        url ? link(url, t('verdict.pendingLink'), { external: true, className: 'chit' }) : null,
       );
+    } else {
+      pending.hidden = true;
+      pending.replaceChildren();
     }
+    updated.textContent = view.updatedAt
+      ? t('verdict.updated', { time: formatDateTime(view.updatedAt, locale) ?? '—' })
+      : '';
   }
 
-  function paintPosts() {
-    const feed = state.feed ? feedView(state.feed) : null;
-    const signature = JSON.stringify([feed?.latestPosts, Boolean(state.feedError), kindFilter, postLimit]);
-    if (signature === postsSignature) return;
-    postsSignature = signature;
-    clear(postHost);
-    if (!feed) {
-      postHost.append(el('p', { class: 'empty' }, state.feedError ? t('common.readError') : t('common.loading')));
+  function paintRhythm() {
+    const view = rhythmView(state.rhythm, locale);
+    rhythmHost.replaceChildren();
+    if (!view) {
+      if (state.rhythmError) rhythmHost.append(el('p', { class: 'empty' }, t('common.readError')));
       return;
     }
-    const rows = feed.latestPosts.filter((post) => kindFilter === 'all' || post.kind === kindFilter);
+    const median = view.stats.medianIntervalDays;
+    const recent = view.recentMedianDays;
+    const longest = view.stats.longestIntervalDays;
+    const facts = factGrid([
+      fact(t('home.medianInterval'), median === null ? '—' : formatDays(median, locale), null, {
+        unit: median === null ? null : locale === 'zh' ? '天' : 'days',
+      }),
+      fact(t('home.recentMedian'), recent === null ? '—' : formatDays(recent, locale), null, {
+        unit: recent === null ? null : locale === 'zh' ? '天' : 'days',
+      }),
+      fact(t('home.longestInterval'), longest === null ? '—' : formatDays(longest, locale), null, {
+        unit: longest === null ? null : locale === 'zh' ? '天' : 'days',
+      }),
+    ]);
+    rhythmHost.append(
+      facts,
+      heatmapBlock({
+        heatmap: view.heatmap,
+        weekdayLabels: view.weekdayLabels,
+        t,
+        locale,
+        total: view.heatTotal,
+      }),
+    );
+  }
+
+  function paintRecent() {
+    const view = timelineView(state.timeline);
+    clear(recentHost);
+    if (!view) {
+      recentHost.append(el('p', { class: 'empty' }, state.timelineError ? t('common.readError') : t('common.loading')));
+      return;
+    }
+    const rows = view.events.slice().reverse().slice(0, RECENT_LIMIT);
     if (!rows.length) {
-      postHost.append(el('p', { class: 'empty' }, t('radar.empty')));
+      recentHost.append(el('p', { class: 'empty' }, t('timeline.empty')));
       return;
     }
-    const shown = rows.slice(0, postLimit);
-    const list = el('div', { class: 'feed' });
-    for (const post of shown) list.append(feedItem(post, { t, locale }));
-    postHost.append(list);
-    if (rows.length > shown.length) {
-      postHost.append(
+    const table = el('table', { class: 'data-table recent-table' });
+    table.append(
+      el(
+        'thead',
+        {},
+        el('tr', {}, el('th', {}, t('home.colWhen')), el('th', {}, t('home.colKind')), el('th', {}, t('home.colSource'))),
+      ),
+    );
+    const body = el('tbody');
+    for (const event of rows) {
+      const url = safeXUrl(event.sourceUrl);
+      const kind = event.kind === 'banked' ? t('home.kindBanked') : t('home.kindReset');
+      body.append(
         el(
-          'button',
-          {
-            type: 'button',
-            class: 'btn btn--quiet',
-            style: 'margin-top:24px',
-            onclick: () => {
-              postLimit = rows.length;
-              paintPosts();
-            },
-          },
-          `${t('radar.showMore')} · ${formatNumber(rows.length - shown.length, locale)}`,
+          'tr',
+          {},
+          el('td', { class: 'table-time' }, formatDateTime(event.at, locale) ?? t('common.unavailable')),
+          el(
+            'td',
+            {},
+            el('span', { class: 'chit', dataset: { tone: event.kind === 'banked' ? 'line' : 'ok' } }, kind),
+            event.state === 'announced' ? el('span', { class: 'chit', dataset: { tone: 'warn' } }, t('timeline.announced')) : null,
+          ),
+          el(
+            'td',
+            {},
+            url
+              ? link(url, `${t('home.sourcePost')} ↗`, { external: true, className: 'table-link' })
+              : el('span', { class: 'muted' }, t('home.sourceLedger')),
+          ),
         ),
       );
     }
+    table.append(body);
+    recentHost.append(el('div', { class: 'table-wrap' }, table));
   }
 
-  function paintAll() {
-    paintHeadline();
-    paintStrip();
-    paintSeries();
-    paintPosts();
-  }
-
-  paintFilters();
-  paintAll();
+  paintVerdict();
+  paintRhythm();
+  paintRecent();
 
   const unsubscribe = subscribe((slice) => {
-    if (slice === 'feed') { paintHeadline(); paintSeries(); paintPosts(); }
-    if (slice === 'timeline') paintSeries();
-    if (slice === 'forecast' || slice === 'feed') paintStrip();
+    if (slice === 'forecast') paintVerdict();
+    if (slice === 'rhythm') paintRhythm();
+    if (slice === 'timeline') paintRecent();
   });
-  cleanups.push(unsubscribe, subscribeTimeZone(() => { paintHeadline(); paintStrip(); paintSeries(); }));
+  cleanups.push(unsubscribe);
+  cleanups.push(subscribeTimeZone(() => {
+    paintVerdict();
+    paintRecent();
+  }));
 
   const ticker = setInterval(() => {
-    if (!document.hidden) {
-      paintHeadline();
-      paintStrip();
-      paintSeries();
-    }
+    if (!document.hidden) paintVerdict();
   }, 60_000);
   cleanups.push(() => clearInterval(ticker));
 
@@ -248,8 +325,6 @@ export async function render(host, app) {
 
 /* ------------------------------------------------------------------ fragments */
 
-function fact(term, value, sub) {
-  const node = el('div', { class: 'fact' }, el('dt', {}, term), el('dd', {}, value));
-  if (sub) node.append(el('p', {}, sub));
-  return node;
+function guideLink(href, key, label) {
+  return el('a', { href, 'data-seo-link': key, class: 'chit guide-link' }, label, icon('external', { size: 13 }));
 }

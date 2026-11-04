@@ -200,7 +200,7 @@ const ARTICLES = {
       related: ['codex-reset', 'codex-banked-reset'],
       sources: [
         { label: 'OpenAI Help Center：Codex 重置如何运作', url: 'https://help.openai.com/zh-hans-cn/articles/20001498-how-resets-work-in-codex' },
-        { label: 'OpenAI Status：服务状态', url: 'https://status.openai.com/' },
+        { label: 'Tibo（@thsottiaux）在 X 上的公开动态', url: 'https://x.com/thsottiaux' },
       ],
     },
     en: {
@@ -264,7 +264,7 @@ const ARTICLES = {
       related: ['codex-reset', 'codex-banked-reset'],
       sources: [
         { label: 'OpenAI Help Center: How resets work in Codex', url: 'https://help.openai.com/en/articles/20001498-how-resets-work-in-codex' },
-        { label: 'OpenAI Status', url: 'https://status.openai.com/' },
+        { label: 'Tibo (@thsottiaux) on X', url: 'https://x.com/thsottiaux' },
       ],
     },
   },
@@ -329,6 +329,7 @@ const ARTICLES = {
       related: ['codex-reset', 'codex-5-hour-limit'],
       sources: [
         { label: 'OpenAI Help Center：Codex 重置如何运作', url: 'https://help.openai.com/zh-hans-cn/articles/20001498-how-resets-work-in-codex' },
+        { label: 'Tibo（@thsottiaux）在 X 上的公开动态', url: 'https://x.com/thsottiaux' },
       ],
     },
     en: {
@@ -390,6 +391,7 @@ const ARTICLES = {
       related: ['codex-reset', 'codex-5-hour-limit'],
       sources: [
         { label: 'OpenAI Help Center: How resets work in Codex', url: 'https://help.openai.com/en/articles/20001498-how-resets-work-in-codex' },
+        { label: 'Tibo (@thsottiaux) on X', url: 'https://x.com/thsottiaux' },
       ],
     },
   },
@@ -406,12 +408,12 @@ const ARTICLES = {
           paragraphs: [
             '第一层是 5 小时滚动窗口：从你在这个窗口里的第一次请求开始计时，5 小时后自动恢复。大多数「突然不能用了」都是这一层，等一等就好。',
             '第二层是每周额度：按周结算，用完就要等周额度刷新。它和 5 小时窗口分开计算，把 5 小时窗口等到也不一定能继续用。',
-            '第三层其实不是额度问题：如果报错是限流、超时或服务异常，先去看 OpenAI Status 的服务状态，再考虑额度。',
+            '第三层其实不是额度问题：如果报错是限流、超时或服务异常，先确认是不是服务本身的故障，再考虑额度。',
           ],
           list: [
             '桌面端或网页版：设置 → 用量，能看到当前窗口的剩余比例与到期时间。',
             'CLI：输入 /usage，同时给出当前用量和窗口信息。',
-            '本站的服务状态页把 Codex 各入口的官方状态和重置记录放在一起，方便对照。',
+            '本站的数据状态页把台账的覆盖范围、缺口与重置记录放在一起，方便对照。',
           ],
         },
         {
@@ -456,7 +458,7 @@ const ARTICLES = {
       related: ['codex-reset', 'codex-5-hour-limit'],
       sources: [
         { label: 'OpenAI Help Center：Codex 重置如何运作', url: 'https://help.openai.com/zh-hans-cn/articles/20001498-how-resets-work-in-codex' },
-        { label: 'OpenAI Status：服务状态', url: 'https://status.openai.com/' },
+        { label: 'Tibo（@thsottiaux）在 X 上的公开动态', url: 'https://x.com/thsottiaux' },
       ],
     },
     en: {
@@ -471,12 +473,12 @@ const ARTICLES = {
           paragraphs: [
             'The first layer is the rolling 5-hour window: it starts with your first request inside that window and refills five hours later. Most “it suddenly stopped working” cases are this layer, and waiting is the whole fix.',
             'The second layer is the weekly allowance. It is metered separately, so waiting out the 5-hour window does not give you more if the week is already spent.',
-            'The third case is not a quota problem at all: if the error mentions rate limiting, timeouts or a service incident, check OpenAI Status before you assume it is your allowance.',
+            'The third case is not a quota problem at all: if the error mentions rate limiting, timeouts or a service incident, rule out a service fault before you assume it is your allowance.',
           ],
           list: [
             'Desktop or web: Settings → Usage shows the remaining share and when the window ends.',
             'CLI: /usage returns the same figures, plus the redeem control.',
-            'This site’s status page pairs each Codex surface’s official state with the reset records.',
+            'This site’s data-status page puts the ledger’s coverage, gaps and reset records side by side.',
           ],
         },
         {
@@ -521,7 +523,7 @@ const ARTICLES = {
       related: ['codex-reset', 'codex-5-hour-limit'],
       sources: [
         { label: 'OpenAI Help Center: How resets work in Codex', url: 'https://help.openai.com/en/articles/20001498-how-resets-work-in-codex' },
-        { label: 'OpenAI Status', url: 'https://status.openai.com/' },
+        { label: 'Tibo (@thsottiaux) on X', url: 'https://x.com/thsottiaux' },
       ],
     },
   },
@@ -545,7 +547,7 @@ const ARTICLES = {
           h2: '二、本站的浏览器通知',
           paragraphs: [
             '打开本站，点页头右上角的铃铛按钮，浏览器询问通知权限时选择允许，按钮状态变成「已开启」即可。之后检测到新的重置公告会弹出通知。',
-            '限制要说清楚：本站是只读镜像，没有服务端推送，通知由页面自己的轮询触发。所以需要这个页面在浏览器里保持打开（可以放在后台标签页）；关掉浏览器或设备休眠时不会响。',
+            '限制要说清楚：本站只读公开数据，没有服务端推送，通知由页面自己的轮询触发。所以需要这个页面在浏览器里保持打开（可以放在后台标签页）；关掉浏览器或设备休眠时不会响。',
             '适合：工作时本来就开着这个页面的人。免费、不用注册、不收集账号信息。',
           ],
         },
@@ -560,7 +562,7 @@ const ARTICLES = {
           h2: '四、第三方转发',
           paragraphs: [
             '社区里有把重置公告转发到 Telegram、Discord 或企业微信的机器人，适合团队统一接收。',
-            '要注意时延和可靠性：转发链路多一跳，可能更慢；上游接口一变，转发也可能悄悄停掉。把它当作补充而不是唯一来源。',
+            '要注意时延和可靠性：转发链路多一跳，可能更慢；数据源一变，转发也可能悄悄停掉。把它当作补充而不是唯一来源。',
           ],
         },
         {
@@ -578,7 +580,7 @@ const ARTICLES = {
         },
         {
           q: '关掉网页还会收到提醒吗？',
-          a: '不会。通知依赖页面自身的轮询，页面关掉或设备休眠时不会响。这是只读镜像的固有限制，我们没有隐瞒这一点。',
+          a: '不会。通知依赖页面自身的轮询，页面关掉或设备休眠时不会响。这是纯静态数据站点的固有限制，我们没有隐瞒这一点。',
         },
         {
           q: '重置一般什么时候发生？',
@@ -588,7 +590,6 @@ const ARTICLES = {
       related: ['codex-reset', 'codex-quota-run-out'],
       sources: [
         { label: 'Tibo（@thsottiaux）在 X 上的公开动态', url: 'https://x.com/thsottiaux' },
-        { label: 'OpenAI Status：服务状态', url: 'https://status.openai.com/' },
       ],
     },
     en: {
@@ -609,7 +610,7 @@ const ARTICLES = {
           h2: '2. Browser notifications from this site',
           paragraphs: [
             'Open the site and press the bell in the top-right of the header, then allow notifications when the browser asks; the button switches to “on” and new announcements raise a notification.',
-            'The limitation, stated plainly: this is a read-only mirror with no server-side push, so alerts fire from the page’s own polling. Keep the page open in a background tab — nothing fires if the browser is closed or the device is asleep.',
+            'The limitation, stated plainly: this site only reads public data and has no server-side push, so alerts fire from the page’s own polling. Keep the page open in a background tab — nothing fires if the browser is closed or the device is asleep.',
             'Best for: people who keep the page open while working. Free, no account, no personal data collected.',
           ],
         },
@@ -624,7 +625,7 @@ const ARTICLES = {
           h2: '4. Third-party relays',
           paragraphs: [
             'Community bots forward reset announcements to Telegram, Discord or enterprise chat, which suits a team that wants one shared feed.',
-            'Watch the latency and the upkeep: every relay adds a hop, and an upstream API change can quietly stop it. Treat a relay as a supplement, not the only source.',
+            'Watch the latency and the upkeep: every relay adds a hop, and a change at the source can quietly stop it. Treat a relay as a supplement, not the only source.',
           ],
         },
         {
@@ -642,7 +643,7 @@ const ARTICLES = {
         },
         {
           q: 'Will I get alerts with the page closed?',
-          a: 'No. Alerts depend on the page polling, so closing the browser or sleeping the device stops them. That is a hard limit of a read-only mirror, and the interface says so.',
+          a: 'No. Alerts depend on the page polling, so closing the browser or sleeping the device stops them. That is a hard limit of a static-data site, and the interface says so.',
         },
         {
           q: 'When do resets usually happen?',
@@ -652,7 +653,6 @@ const ARTICLES = {
       related: ['codex-reset', 'codex-quota-run-out'],
       sources: [
         { label: 'Tibo (@thsottiaux) on X', url: 'https://x.com/thsottiaux' },
-        { label: 'OpenAI Status', url: 'https://status.openai.com/' },
       ],
     },
   },

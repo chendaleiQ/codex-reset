@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-delegated: zero-build static ES-module frontend (plain HTML/CSS/JS) served by a small dependency-free Node HTTP server that also reverse-proxies the upstream public JSON API. Chosen because the source product is server-rendered HTML with ES-module scripts, the deliverable must run locally with `node server.js` and no install step, and the redesign is entirely in the client.
+zero-build static ES-module frontend (plain HTML/CSS/JS) served by a small dependency-free Node HTTP server. The server also renders every crawlable route, serves the site's own `/api/*` from a dataset that ships inside the release, and stores the vigil wall in a mounted state directory. No third-party API is called at runtime, at boot or in tests; a release is self-contained, so the site behaves the same on a laptop with wifi off as on the server.
 
 ## Users
 
@@ -16,68 +16,65 @@ Paid Codex / ChatGPT users (Plus, Pro, Business) who run the agent hard enough t
 
 ## Product Purpose
 
-Answer one question — "will Codex reset today, and when?" — with evidence instead of vibes. The product records every verified quota reset, models the 24h and 48h probability of the next one from the historical rhythm, watches Thibault Sottiaux's ("Tibo", the OpenAI Codex lead) public posts for reset signals in real time, and folds in OpenAI's own service status. Success is a visitor deciding in under five seconds whether to keep waiting or go do something else, and trusting the number they based it on.
+Answer one question — "will Codex reset today, and when?" — with evidence instead of vibes. The product keeps its own public ledger of every confirmed global reset, models the 24h and 48h probability of the next one from that ledger, and shows the rhythm underneath the number: how long intervals usually run, which hours of the week resets land in, and what the model's own backtest says. The 28-day shipping run that the site originally tracked is over; its calendar is now a frozen retrospective, and the product's live job is the ongoing rhythm.
+
+Success is a visitor deciding in under five seconds whether to keep waiting or go do something else, and trusting the number they based it on.
 
 ## Positioning
 
-Independent verification, not announcement-watching. The tracker polls real ChatGPT Pro accounts and treats a reset as real only when quota actually moves, then reconciles that against the X post that claimed it. Public numbers therefore carry an explicit evidence state (verified / observed / announced-only / pending) and an explicit confidence, and the model ships with its backtest record — including when it has not beaten its baselines. A neighboring site can copy the feed; it cannot truthfully copy a verified-observation ledger it does not run.
+A ledger we keep, and a model we can show the work for — not an announcement mirror. Every row is traceable to a public post; announced-but-unlanded claims never enter the prediction sample; the probability is a conditional survival estimate on our own intervals, with a bootstrap range, an explicit confidence, and a walk-forward backtest that is published even when it fails to beat its baseline. A neighbouring site can copy a feed; it cannot copy a ledger and a method it does not maintain.
 
 ## Operating Context
 
 - Consulted repeatedly during a blocked work session and around the edges of the night, in a browser tab or a phone, always in a hurry.
-- Languages: English and Simplified Chinese are the two the user actually reads; Japanese and Spanish exist upstream.
-- Adjacent surfaces the product points at rather than replaces: OpenAI Status, the X account `@thsottiaux`, the ChatGPT usage analytics page, Telegram and Discord alert channels.
-- Alerting is a real part of the workflow: web push plus chat channels, because the answer changes while the user is not looking.
-- All personal data (the user's own usage percentage, their vigil entry) stays in that browser; the public API is anonymous.
+- Languages: English and Simplified Chinese are the two the user actually reads.
+- Adjacent surfaces the product points at rather than replaces: the X account `@thsottiaux`, the ChatGPT usage analytics page.
+- The 28-day run ended on 1 November 2026. The retrospective stays at `/plan`; the live product moved to `/rhythm`.
+- All personal data (the user's vigil entry) is either local to the browser or, for the shared wall, a name and a day count in a JSON file on this server. The public API is anonymous.
 
 ## Capabilities and Constraints
 
-Confirmed upstream functionality that must survive the redesign:
-
-1. **Forecast console** — last verified global reset (relative + absolute, with the "did it reset today?" verdict), 24h and 48h reset probability with the model's uncertainty range, the historical high-frequency window, model confidence, a plain-language wait comparison ("you have waited 1.2 days; 0% of the last 8 intervals were shorter"), and the evidence list behind the number.
-2. **Signal resolution ladder** — an official/committed signal (Tibo stated a window) overrides the model; a "tease" (👀, no commitment) is labelled as a tease and never shown as a probability; a pending claim gets a countdown to the stated deadline; otherwise the number is labelled as a historical baseline.
-3. **Personal tracker** — enter your own `/status` usage percentage and the tracker compares your progress against the historical reference curve to tell you whether you outlast the reset.
-4. **Feed / radar** — every @thsottiaux post classified into signal, boost, banked, limits, or context, filterable, with engagement counts, machine translation of non-English posts with the original one tap away.
-5. **Timeline** — a filterable, sortable archive of every recorded reset and banked-reset grant, per-event evidence state, reason tags, announcement-vs-verification time, a rhythm chart of days-between-resets, and a timezone selector.
-6. **Banked resets** — grants that are stored rather than consumed, tracked separately because they are not resets and must not contaminate the forecast sample.
-7. **Status** — current OpenAI component state for each Codex surface (Web, API, CLI, VS Code, Desktop), the active incident, and an incident ledger with recovery durations and whether a reset followed.
-8. **Crowd poll** — "when will the next reset land?" bucketed by window, with the tally and a published crowd accuracy against resolved polls.
-9. **Tibo vigil (/tibo)** — the community ritual: a believer counter for the current cycle, a wall of named entries with country flags, "amen" endorsements, a flame that must be tended daily, answered-prayer archive, and a sleep clock histogram of which hour of the day resets actually land.
-10. **Alerts** — web-push subscription for reset events, plus external channels.
+1. **Verdict console** — one answer sentence: probability for 24h and 48h with its range and confidence, the last confirmed reset and how long the current wait is, and how that wait compares with the historical interval sample.
+2. **Rhythm** (`/rhythm`) — interval distribution, weekday × hour heatmap, top three-hour windows, monthly counts, and the method behind them (Weibull renewal fit blended with the empirical survival curve, recency half-life, bootstrap range, walk-forward Brier vs baseline).
+3. **Timeline** — every confirmed reset and banked grant, per-event evidence state, announcement-vs-verification time, a chart of days between resets, filterable and timezone-switchable.
+4. **Data status** (`/status`) — the honest mirror: when the ledger was last updated, how much it covers, where the gaps are, self-checks, model parameters and backtest, and the source list. No third-party status page, no claim to monitor accounts we do not run.
+5. **Vigil** (`/vigil`) — the community ritual, now stored on this server: who is waiting in the current epoch, a wall of named entries, amens, and the hour-of-day histogram of when resets actually land.
+6. **28-day retrospective** (`/plan`) — the frozen Day 1–28 table, explicitly marked as ended, kept because it is the record of why the rhythm changed.
+7. **Alerts** — web-push subscription for reset events, plus external channels.
 
 Constraints:
-- Read-only against upstream public JSON; no writes except the vigil/poll rituals, which are optional and never required to read anything.
-- Must degrade honestly: every panel that cannot load says so; the forecast never shows a number without its label and confidence.
-- Live data is the point — the readout refreshes on a 30s forecast / 60s feed cadence while visible.
-- zh-Hans and en are first-class; every string is localized, and a non-English source post always keeps its original text reachable.
+- Read-only against the world: no scraping, no upstream proxy, no login. The only write is the vigil entry, which is optional.
+- Must degrade honestly: an empty sample says "not enough data"; a stale ledger says "stale"; the forecast never shows a number without its label, range or confidence.
+- A release carries its own data, so publishing an event means editing `data/ledger.json` and redeploying — by design, not by accident.
 
 ## Brand Commitments
 
 - Name: **Codex Reset**. The subject is Codex; the product is the reset clock.
 - Voice: dry, technical, exact. It says "I do not know yet" before it guesses. Never hyped, never cute about the stakes, and never pretends an announcement is a verified observation.
-- Real facts that must not be softened or invented: the tibometer's confidence states, the backtest record, incident data, and the reset ledger.
+- Real facts that must not be softened or invented: the evidence states, the interval sample, the backtest record, the ledger.
 - `@thsottiaux` / "Tibo" and the opossum-adjacent community culture around him are real subjects of the product, not mascots to invent.
 
 ## Evidence on Hand
 
-- Live public JSON API (upstream `https://codex-reset.com/api/...`) — forecast, timeline, feed, status, status-history, health, pray, reset-poll, usage-reference. Proxied locally.
-- 63 recorded resets in the upstream ledger, 10 banked grants, and the hourly distribution of reset times.
-- Real Tibo post text and URLs from the live feed; real OpenAI incident names, ids and durations.
-- No owned photography, logos, or illustration; the only upstream raster is a portrait of Tibo, which is third-party material and is not treated as an owned asset.
+- `data/ledger.json` — 61 confirmed resets and 11 publicly sourced banked grants, each with its X post URL.
+- `data/posts.json` — the frozen 28-day archive (21 recorded days with bilingual text).
+- Derived: interval sample (60 intervals), UTC weekday × hour heatmap, top windows, monthly counts, gaps over 30 days.
+- No owned photography, logos, or illustration. The only raster of a person is a portrait of Tibo, third-party material, never treated as an owned asset.
 - No analytics, no testimonials, no pricing.
 
 ## Product Principles
 
 1. **Evidence before verdict.** Every number travels with what backs it. A missing or degraded input is displayed, never interpolated away.
-2. **The bound is the message.** "19% in 24h, low confidence" is more useful to a blocked user than a confident wrong answer; the uncertainty is shown at the same weight as the value.
-3. **One question per screen.** The visitor arrived with "should I wait?" — the answer, the moment of the last reset, and the next signal own the first viewport; everything else is depth behind it.
-4. **Signals have a temperature.** Announcement, tease, observation and model output are four different things and must look like four different things, at a glance.
+2. **The bound is the message.** "19% in 24h, range 16–32%, low confidence" is more useful to a blocked user than a confident wrong answer.
+3. **One question per screen.** The visitor arrived with "should I wait?" — the answer, the moment of the last reset, and the next high-frequency window own the first viewport; everything else is depth behind it.
+4. **Signals have a temperature.** Announced, confirmed, banked and modelled are four different things and must look like four different things, at a glance.
 5. **The clock never stops.** Time is the primary datum; anything that ages is rendered as a live, self-updating readout, not a static string.
+6. **Own the method.** If the site cannot explain how a number was produced from its own files, it does not publish the number.
 
 ## Accessibility & Inclusion
 
 - Body text ≥4.5:1, large text ≥3:1 on every surface, in both themes.
-- Every live region announces its updates; no information is conveyed by colour alone (states carry a text label or a shape).
-- Full keyboard operation with visible focus; the tracker and vigil are operable without a pointer.
+- Every live region announces its updates; no information is conveyed by colour alone (states carry a text label or a shape; heatmap cells carry `title` text and an aria summary).
+- Full keyboard operation with visible focus; the vigil form is operable without a pointer.
 - `prefers-reduced-motion` disables the intro and the pulsing readouts.
-- All times are rendered in the visitor's timezone with the zone named, and the original UTC instant is always reachable.
+- All times are rendered in the visitor's timezone with the zone named; model windows are labelled UTC and the original instant is always reachable.

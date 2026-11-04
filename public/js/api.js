@@ -1,7 +1,9 @@
 /**
- * Read-only client for the public Codex Reset JSON API (mirrored through the
- * local server at /api/*). Every call is anonymous, cached in memory for a
- * short window, and de-duplicated while in flight.
+ * Read/write client for this site's own JSON API (same origin, `/api/*`).
+ *
+ * Everything except the vigil wall is read-only. Reads are cached in memory for
+ * a short window and de-duplicated while in flight; the one write helper
+ * (`postJson`) always goes to the network.
  */
 
 const inflight = new Map();
@@ -48,6 +50,28 @@ export function readJson(pathname, { ttl = DEFAULT_TTL, fresh = false, signal, l
   return request;
 }
 
+/**
+ * The only write path: JSON in, JSON out. Same-origin by construction, so the
+ * server's origin check passes without us sending credentials.
+ */
+export function postJson(pathname, body, { signal } = {}) {
+  return fetch(pathname, {
+    method: 'POST',
+    headers: { accept: 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify(body ?? {}),
+    signal,
+  }).then(async (response) => {
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      const error = new Error(payload?.error || `http_${response.status}`);
+      error.status = response.status;
+      error.body = payload;
+      throw error;
+    }
+    return payload;
+  });
+}
+
 /** Drops every cached payload, optionally limited to one path prefix. */
 export function invalidate(prefix = '') {
   for (const key of [...cache.keys()]) if (key.startsWith(prefix)) cache.delete(key);
@@ -55,14 +79,13 @@ export function invalidate(prefix = '') {
 
 export const endpoints = {
   forecast: (opts) => readJson('/api/forecast', opts),
-  timeline: (opts) => readJson('/api/timeline', opts),
-  feed: (opts) => readJson('/api/feed', opts),
+  timeline: (opts) => readJson('/api/timeline', { ttl: 300_000, ...opts }),
+  rhythm: (opts) => readJson('/api/rhythm', { ttl: 300_000, ...opts }),
   status: (opts) => readJson('/api/status', opts),
-  statusHistory: (range, opts) => readJson('/api/status-history', { ...opts, params: { range } }),
   health: (opts) => readJson('/api/health', { ttl: 60_000, ...opts }),
-  resetPoll: (opts) => readJson('/api/reset-poll', { ...opts, params: { ...opts?.params } }),
   vigil: (opts) => readJson('/api/pray', { ttl: 15_000, ...opts }),
-  usageReference: (opts) => readJson('/api/usage-reference', { ttl: 300_000, ...opts }),
+  joinVigil: (entry) => postJson('/api/pray', entry),
+  amen: (id) => postJson('/api/pray/amen', { id }),
 };
 
 /** Human-readable failure text for a rejected request. */

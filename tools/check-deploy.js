@@ -23,7 +23,8 @@ const server = http.createServer((req, res) => {
     if (fault === 'wrong-release') release.id = 'previous-release';
     return res.end(JSON.stringify({ ok: true, release }));
   }
-  if (req.url === '/api/feed?locale=zh') return res.end(JSON.stringify({ tweets: fault === 'empty-feed' ? [] : [{ id: '1' }] }));
+  if (req.url === '/api/timeline') return res.end(JSON.stringify({ events: fault === 'empty-feed' ? [] : Array.from({ length: 60 }, (_, i) => ({ id: i })) }));
+  if (req.url === '/api/forecast') return res.end(JSON.stringify(fault === 'empty-feed' ? {} : { probabilities: { rounded_24h: 20 }, model: { interval_sample: 60 } }));
   if (fault === 'http-error' && req.url === '/status') { res.writeHead(502); return res.end('Bad Gateway'); }
   if (req.url === '/js/main.js') return res.end(fault === 'stale-asset' ? 'old script' : script);
   if (req.url === '/robots.txt') {

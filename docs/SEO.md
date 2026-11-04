@@ -132,3 +132,56 @@
 ### 外链与引用源
 
 发布稿见 [外链与GEO发布.md](外链与GEO发布.md)：X（中英）、linux.do、Reddit、V2EX，以及发布顺序和禁忌。
+
+## 2026-11-02 · sitemap「无法抓取」修复记录
+
+**现象**：GSC 站点地图状态连续 6 天「无法抓取」，上次读取停在 10-30；服务器日志里几乎没有真实 Googlebot 抓 sitemap 的记录。
+
+**排查结论**：
+
+| 检查项 | 结果 |
+|---|---|
+| sitemap 内容 | 200 / application/xml / 27KB / 58 条 URL / XML 合法 |
+| 源站直连（nginx → docker，本机） | **TTFB 0.03s**，完全正常 |
+| 公网经 Cloudflare | TTFB 在 1.1s / 8.5s / 15.9s 之间抖动，**出现过 20s 超时** |
+| Cloudflare 对 Googlebot UA | 200，无挑战、无 cf-mitigated |
+| cloudflared 隧道 | 3 天 81 条 `context canceled` / `Failed to proxy` |
+
+**根因**：源站在中国大陆（阿里云），Cloudflare Tunnel 跨境回源不稳定；Google 从境外抓 sitemap 时遇到长尾延迟/超时，且 sitemap 抓取失败后的重试周期很长，于是长期卡在「无法抓取」。
+
+**修复**（2026-11-02 10:xx）：
+
+1. GSC 里重新提交 `/sitemap.xml`（「上次读取时间」立刻更新到 11-02，证明 Google 确实在抓、只是失败）。
+2. Cloudflare 加 Page Rule：`*codex-reset.opentunnel.asia/sitemap.xml*` → **Cache Everything + Edge Cache TTL 1 天**，让 Google 从边缘节点取，不再跨境回源。
+3. 清理该 URL 缓存，验证 `cf-cache-status` 从 `DYNAMIC` → `MISS` → **`HIT`**。
+4. 重启 cloudflared 清理历史异常连接。
+
+**后续观察**：24-48 小时后看 GSC 站点地图是否转为「成功」；若仍失败，下一步把 sitemap 静态托管到 Cloudflare（R2/Pages）彻底脱离中国源站。
+
+> 注：Page Rule id `18e38991316b474a414bd519868ad7fb`，zone `opentunnel.asia`。边缘 TTL 1 天意味着 sitemap 的 lastmod 更新最多延迟一天，可接受。
+
+## 2026-11-04 · v2 自持化改版（去第三方接口 + 28 天计划结束后的重新布局）
+
+**动因**：① 整站数据来自 `codex-reset.com/api/*`，对方接口一抖，页面与 `check:seo` 一起失败（2026-11-04 本地复现：上游不可达 → 快照为空 → SEO 检查直接 assert 失败）；② 28 天计划（Day 1–28）已于 2026-11-01 结束，首页的「活动与重置日历」不再有信息量。
+
+**改动**：
+
+| 项 | 之前 | 之后 |
+|---|---|---|
+| 数据 | 代理上游 4 个接口，每 2 分钟轮询 | 仓库内 `data/ledger.json` + `data/posts.json`，发布时随包，运行时零外部请求 |
+| 预测 | 上游算好的 `forecast` | `lib/model.js` 自算：Weibull 更新过程 + 经验生存率混合、种子固定的自助区间、walk-forward 回测 |
+| 动态 / 服务状态 | 上游 feed / OpenAI Status | 移除；`/status` 改为「数据状态」（覆盖、缺口、自检、模型参数与回测） |
+| 首页 | 概览 + 28 天日历 + 动态 | 结论台（概率/区间/等待对比/高频窗口）+ 节奏摘要 + 最近记录 + 方法 |
+| 新页面 | — | `/rhythm`（间隔分布、周×小时热力图、高发窗口、按月、方法） |
+| `/plan` | 进行中的 Day 1–28 日历 | **已结束的复盘页**，URL 保留，title/H1/lead 全部改为过去时 |
+| `/vigil` | 读上游 `pray` | 本站后端写 `STATE_DIR/vigil.json`，新增「加入这面墙」表单 |
+
+**SEO 处理**：
+
+- 保留全部已收录 URL（含 `/plan`、`/archive/*`、`/guide/*`、`/en/*`），不做 301 搬迁；`/plan` 用「复盘/已结束」承接原有「28 天计划」长尾。
+- 新增 `/rhythm`、`/en/rhythm`，进 sitemap、llms.txt、首页与页脚内链；title/description 按「codex 重置节奏 / 重置时间规律 / reset rhythm」重新写。
+- 首页 title 保持「Codex 今天会重置吗」主词，description 改为自持台账口径，避免与克隆站重复内容。
+- 结构化数据：`Dataset` 的 `distribution.contentUrl` 指向自建 `/api/timeline`；首页 FAQ 改为「怎么判断这次重置和我有关 / 概率怎么算 / 28 天计划结束了吗」。
+- `check:seo` 增加：每路由不得出现 `codex-reset.com` / `status.openai.com` / 「上游数据」；`/rhythm` 必须有 168 个热力格；`/plan` 必须含「已结束」；`/status` 不得再出现「OpenAI Status / 服务状态」。
+
+**给搜索引擎的提醒**：`/plan` 的标题从「完整日历」变成「复盘」，内容类型变化较大，改版后建议在 GSC 对 `/`、`/rhythm`、`/plan` 各请求一次编入索引，并观察 2–4 周「28 天计划」相关查询的点击变化。

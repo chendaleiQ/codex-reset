@@ -1,23 +1,18 @@
 /**
- * Timeline — the record itself. Every verified reset, every banked grant, the
- * rhythm they add up to, and the evidence attached to each one.
+ * Timeline — the record itself. Every confirmed reset, every banked grant, the
+ * rhythm they add up to, and the public post attached to each one.
  */
 
 import { el, icon, link, safeXUrl } from '../dom.js';
-import {
-  resetRhythm,
-  eventTime,
-  isConfirmedReset,
-  timelineView,
-} from '../model.js';
+import { isConfirmedReset, resetRhythm, timelineView } from '../model.js';
 import { getState, loadTimeline, subscribe } from '../store.js';
-import { formatDateTime, formatDay, formatDays, formatNumber, relativeTime } from '../format.js';
+import { formatDateTime, formatNumber, relativeTime } from '../format.js';
 import { getTimeZone, subscribeTimeZone } from '../time-zone.js';
-import { leaf, rhythmChart } from './_parts.js';
+import { fact, factGrid, leaf, rhythmChart } from './_parts.js';
 
 const SORTS = {
-  date: (a, b) => Date.parse(eventTime(b) ?? 0) - Date.parse(eventTime(a) ?? 0),
-  event: (a, b) => a.group.localeCompare(b.group),
+  date: (a, b) => Date.parse(b.at ?? 0) - Date.parse(a.at ?? 0),
+  kind: (a, b) => a.kind.localeCompare(b.kind) || Date.parse(b.at ?? 0) - Date.parse(a.at ?? 0),
 };
 
 export async function render(host, app) {
@@ -25,6 +20,8 @@ export async function render(host, app) {
   const t = app.t;
   const locale = app.locale;
   const cleanups = [];
+  let chartCleanup = null;
+  cleanups.push(() => chartCleanup?.());
 
   host.append(
     el(
@@ -40,28 +37,31 @@ export async function render(host, app) {
   const logHost = el('div');
   const filterHost = el('div', { class: 'filters' });
 
-  const filter = { group: 'all', sort: 'date' };
+  const filter = { kind: 'all', sort: 'date' };
   let limit = 40;
-  let chartCleanup;
-  cleanups.push(() => chartCleanup?.());
+
+  host.append(
+    leaf(t, { title: t('timeline.statEvents') }, statsHost),
+    leaf(t, { title: t('timeline.rhythmTitle'), note: t('timeline.rhythmNote') }, rhythmHost),
+    leaf(t, { title: t('timeline.logTitle'), note: t('timeline.logNote'), tools: filterHost }, logHost),
+  );
 
   function paintStats() {
-    const timeline = state.timeline ? timelineView(state.timeline) : null;
+    const timeline = timelineView(state.timeline);
     statsHost.replaceChildren();
     if (!timeline) return;
-    const facts = el('dl', { class: 'factgrid timeline-stats' });
-    facts.append(
+    const facts = factGrid([
       fact(t('timeline.statResets'), formatNumber(timeline.counts.reset, locale)),
       fact(t('timeline.statBanked'), formatNumber(timeline.counts.banked, locale)),
       fact(t('timeline.statEvents'), formatNumber(timeline.counts.total, locale)),
-    );
+    ], 'factgrid timeline-stats');
     statsHost.append(facts);
   }
 
   function paintRhythm() {
     chartCleanup?.();
     chartCleanup = null;
-    const timeline = state.timeline ? timelineView(state.timeline) : null;
+    const timeline = timelineView(state.timeline);
     rhythmHost.replaceChildren();
     if (!timeline) {
       rhythmHost.append(el('p', { class: 'empty' }, t('common.loading')));
@@ -80,7 +80,6 @@ export async function render(host, app) {
       ['all', t('timeline.filterAll')],
       ['reset', t('timeline.filterReset')],
       ['banked', t('timeline.filterBanked')],
-      ['signal', t('timeline.filterSignal')],
     ];
     for (const [id, label] of groups) {
       filterHost.append(
@@ -89,9 +88,9 @@ export async function render(host, app) {
           {
             type: 'button',
             class: 'filter',
-            'aria-pressed': String(filter.group === id),
+            'aria-pressed': String(filter.kind === id),
             onclick: () => {
-              filter.group = id;
+              filter.kind = id;
               limit = 40;
               paintFilters();
               paintLog();
@@ -104,16 +103,15 @@ export async function render(host, app) {
   }
 
   function paintLog() {
-    const timeline = state.timeline ? timelineView(state.timeline) : null;
+    const timeline = timelineView(state.timeline);
     logHost.replaceChildren();
     if (!timeline) {
-      logHost.append(el('p', { class: 'empty' }, t('common.loading')));
+      logHost.append(el('p', { class: 'empty' }, state.timelineError ? t('common.readError') : t('common.loading')));
       return;
     }
     const rows = timeline.events
-      .filter((event) => filter.group === 'all' || event.group === filter.group)
-      .sort(SORTS[filter.sort])
-      .map((event, index, all) => ({ event, index, all }));
+      .filter((event) => filter.kind === 'all' || event.kind === filter.kind)
+      .sort(SORTS[filter.sort]);
 
     if (!rows.length) {
       logHost.append(el('p', { class: 'ledger-empty' }, t('timeline.empty')));
@@ -121,14 +119,13 @@ export async function render(host, app) {
     }
 
     const shown = rows.slice(0, limit);
-    const table = el('table', { class: 'ledger' });
+    const table = el('table', { class: 'data-table ledger' });
     const head = el('thead');
     const headRow = el('tr');
     for (const [key, label] of [
       ['date', t('timeline.col.date')],
-      ['event', t('timeline.col.event')],
-      [null, t('timeline.col.evidence')],
-      [null, t('timeline.col.reason')],
+      ['kind', t('timeline.col.event')],
+      [null, t('timeline.col.state')],
       [null, t('timeline.col.source')],
     ]) {
       const th = el('th', { ...(key && filter.sort === key ? { 'aria-sort': 'descending' } : {}) });
@@ -156,15 +153,9 @@ export async function render(host, app) {
     head.append(headRow);
 
     const body = el('tbody');
-    const monthCounts = new Map();
-    for (const { event } of shown) {
-      const stamp = eventTime(event);
-      const month = stamp ? monthLabel(stamp, locale, getTimeZone()) : null;
-      if (month) monthCounts.set(month, (monthCounts.get(month) ?? 0) + 1);
-    }
     let currentMonth = null;
-    for (const { event } of shown) {
-      const stamp = eventTime(event);
+    for (const event of shown) {
+      const stamp = event.at;
       const month = stamp ? monthLabel(stamp, locale, getTimeZone()) : null;
       if (month && month !== currentMonth) {
         currentMonth = month;
@@ -172,39 +163,50 @@ export async function render(host, app) {
           el(
             'tr',
             { class: 'ledger-month' },
-            el(
-              'th',
-              { colspan: '5', scope: 'colgroup' },
-              month,
-              el('span', { class: 'ledger-month-count' }, `${monthCounts.get(month)} ${locale === 'zh' ? '条' : 'events'}`),
-            ),
+            el('th', { colspan: '4', scope: 'colgroup' }, month),
           ),
         );
       }
       const when = formatDateTime(stamp, locale, getTimeZone());
-      const evidence = evidenceMark(event, t);
-      const reason = event.reasonTags.length
-        ? el('div', { class: 'ledger-tags' }, event.reasonTags.map((tag) => el('span', { class: 'chit' }, tag)))
-        : document.createTextNode('—');
-      const xUrl = safeXUrl(event.url);
-      const tr = el(
-        'tr',
-        {},
+      const url = safeXUrl(event.sourceUrl);
+      body.append(
         el(
-          'td',
-          { class: 'ledger-time' },
-          el('span', { class: 'ledger-main' }, when ?? t('common.unavailable')),
-          el('span', { class: 'ledger-sub' }, relativeTime(stamp, Date.now(), locale)),
+          'tr',
+          {},
+          el(
+            'td',
+            { class: 'ledger-time' },
+            el('span', { class: 'ledger-main' }, when ?? t('common.unavailable')),
+            el('span', { class: 'ledger-sub' }, relativeTime(stamp, Date.now(), locale)),
+          ),
+          el(
+            'td',
+            {},
+            el(
+              'span',
+              { class: 'chit', dataset: { tone: event.kind === 'banked' ? 'line' : 'ok' } },
+              event.kind === 'banked' ? t('home.kindBanked') : t('home.kindReset'),
+            ),
+          ),
+          el(
+            'td',
+            {},
+            isConfirmedReset(event)
+              ? el('span', { class: 'mark', dataset: { tone: 'ok', shape: 'rule' } }, t('timeline.verified'))
+              : el('span', { class: 'mark', dataset: { tone: 'warn', shape: 'ring' } }, t('timeline.announced')),
+          ),
+          el(
+            'td',
+            {},
+            url
+              ? link(url, `${t('home.sourcePost')} ↗`, { external: true, className: 'table-link' })
+              : el('span', { class: 'muted' }, t('home.sourceLedger')),
+          ),
         ),
-        el('td', { class: 'ledger-summary' }, event.summary, xUrl ? link(xUrl, ` ${t('common.originalPost')}`, { external: true }) : null),
-        el('td', {}, evidence),
-        el('td', {}, reason),
-        el('td', {}, el('span', { class: 'muted' }, event.source ?? '—')),
       );
-      body.append(tr);
     }
     table.append(head, body);
-    logHost.append(el('div', { class: 'ledger-wrap' }, table));
+    logHost.append(el('div', { class: 'table-wrap' }, table));
     if (rows.length > shown.length) {
       logHost.append(
         el(
@@ -218,17 +220,11 @@ export async function render(host, app) {
               paintLog();
             },
           },
-          `${t('radar.showMore')} · ${formatNumber(rows.length - shown.length, locale)}`,
+          `${t('timeline.showMore')} · ${formatNumber(rows.length - shown.length, locale)}`,
         ),
       );
     }
   }
-
-  host.append(
-    leaf(t, { title: t('timeline.statEvents') }, statsHost),
-    leaf(t, { title: t('timeline.rhythmTitle'), note: t('timeline.rhythmNote') }, rhythmHost),
-    leaf(t, { title: t('timeline.logTitle'), note: t('timeline.logNote'), tools: filterHost }, logHost),
-  );
 
   function paintAll() {
     paintStats();
@@ -247,28 +243,15 @@ export async function render(host, app) {
   const unsubscribe = subscribe((slice) => {
     if (slice === 'timeline') paintAll();
   });
-  cleanups.push(unsubscribe, subscribeTimeZone(() => { paintRhythm(); paintLog(); }));
+  cleanups.push(unsubscribe);
+  cleanups.push(subscribeTimeZone(() => {
+    paintRhythm();
+    paintLog();
+  }));
 
   return () => {
     for (const cleanup of cleanups) cleanup?.();
   };
-}
-
-function evidenceMark(event, t) {
-  if (event.bankedGrant || event.group === 'banked') {
-    return [el('span', { class: 'mark', dataset: { tone: 'info', shape: 'rule' } }, t('radar.kind.banked'))];
-  }
-  const status = String(event.verification ?? '').toLowerCase();
-  if (isConfirmedReset(event)) {
-    return [el('span', { class: 'mark', dataset: { tone: 'ok', shape: 'rule' } }, t('timeline.verified'))];
-  }
-  if (status.includes('observed')) {
-    return [el('span', { class: 'mark', dataset: { tone: 'info', shape: 'ring' } }, t('timeline.observed'))];
-  }
-  if (event.group === 'signal') {
-    return [el('span', { class: 'mark', dataset: { tone: 'warn', shape: 'ring' } }, t('radar.kind.signal'))];
-  }
-  return [el('span', { class: 'mark', dataset: { tone: 'plain', shape: 'ring' } }, t('timeline.pending'))];
 }
 
 function monthLabel(iso, locale, timeZone) {
@@ -279,8 +262,4 @@ function monthLabel(iso, locale, timeZone) {
     month: 'long',
     timeZone,
   }).format(new Date(at));
-}
-
-function fact(term, value) {
-  return el('div', { class: 'fact' }, el('dt', {}, term), el('dd', {}, value));
 }

@@ -206,17 +206,23 @@ Everything is a ruled thing on a sheet; nothing is a floating card.
 - **`.factgrid`** — label over figure, separated by rules, never boxed.
 - **`.ledger`** — the record. Ruled rows, sortable headers, month dividers with
   a count, an evidence mark per row, inline provenance links.
-- **`.lines` / `.surface`** — the service lines: an identity swatch, a name, a
-  track, a named state. Degraded and outage strokes become hazard hatches.
+- **`.heatmap`** — the rhythm surface: a 7 × 24 grid of UTC weekday × hour
+  cells, four intensity levels over the ground, each cell carrying its count in
+  `title` and the grid carrying one aria summary. No third-party status lines
+  and no outage hatching exist in v2 — the site reports its own data, not
+  someone else's service health.
 - **`.mark`** — the one state vocabulary: a filled rule for verified, a ring for
   observed, a hollow ring for claimed, in `ok` / `warn` / `bad` / `plain`.
 - **`.chit`**, **`.filter`**, **`.btn`** — platform controls, 3px radii, hairline
   borders, a reversed fill for the primary.
-- **`.feed`** — one author, one timeline. Each row is a tweet: a 48px portrait,
-  the name with its verified mark, handle, age and evidence tag on the author
-  line; the post text with live links, mentions and hashtags; the translation
-  disclosure; engagement at the foot. The evidence tag stays on the row so a
-  social-looking post can never pass for a verified reset.
+- **`.verdict` / `.verdict-number`** — the answer: a rubric line, the sentence,
+  two horizons as label + figure + range + confidence, and three facts under it
+  (last reset, how the current wait compares, the next high-frequency window).
+  `data-confidence` colours the figure green / amber / grey, but the confidence
+  is always also a word.
+- **`.window-list`**, **`.data-table`**, **`.check-list`** — the rhythm and
+  data-status tables: ranked three-hour windows, interval and month tables, and
+  the ledger's own self-checks. Ruled rows, no cards.
 
 ## Browser surfaces
 

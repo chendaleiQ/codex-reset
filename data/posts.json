@@ -1,0 +1,144 @@
+{
+ "startDate": "2026-10-05",
+ "endDate": "2026-11-01",
+ "timezone": "America/Los_Angeles",
+ "days": 28,
+ "ended": true,
+ "plan_post_url": "https://x.com/thsottiaux/status/2106845241357824205",
+ "posts": [
+  {
+   "at": "2026-10-05T17:20:29.000Z",
+   "zh": "订阅内 GPT-6 Astra 和 GPT-6.1 Sol 的默认速度提升约 50%，覆盖我们所有产品，以及使用 Sign in With ChatGPT 的合作伙伴（OpenCode、Pi、Amp、Devin 等）。无需任何操作。",
+   "en": "Day 1/ We have optimized the default speed to be ~50% faster across GPT-6 Astra and GPT-6.1 Sol through the subscription…",
+   "url": "https://x.com/thsottiaux/status/2107158998495748264"
+  },
+  {
+   "at": "2026-10-06T20:56:08.000Z",
+   "zh": "2.1/ “Approve for me”（自动审核）现已包含在内，不消耗额度——用到时相当于套餐的 2–10%。2.2/ 面向开发者的简化版 API。2.3/ 会议记录已集成。2.4/ 面向开发者的 Decisions API 已上线。",
+   "en": "Roundup of Day 2/ 2.1/ Approve for me (auto-review) is now included and does not use usage. Can be between 2-10% of plan…",
+   "url": "https://x.com/thsottiaux/status/2107575657014468879"
+  },
+  {
+   "at": "2026-10-07T19:19:17.000Z",
+   "zh": "重头戏是 Chat 里的 GPT-6；今天也是个小小的庆祝日：Codex 和 ChatGPT Work 的活跃用户创下 40M 新高。正在给所有付费账户发放一次存储重置。",
+   "en": "Day 3/ The big one is GPT-6 in Chat, but today is also a little celebration day with a new high of 40M active users…",
+   "url": "https://x.com/thsottiaux/status/2107913674593644711"
+  },
+  {
+   "at": "2026-10-08T19:15:14.000Z",
+   "zh": "引导（steering）现在即时生效，模型对你中途的调整反应快了很多…",
+   "en": "Day 4/ We have improved steering to be instant, leading to the model now reacting much faster to adjustments you make…",
+   "url": "https://x.com/thsottiaux/status/2108275041276420573"
+  },
+  {
+   "at": "2026-10-09T19:47:58.000Z",
+   "zh": "桌面应用的输入框预测（Composer predictions）：猜得很准，常让人忍不住多看一眼。Pro 套餐自带，不消耗额度。",
+   "en": "Day 5/ Composer predictions in the desktop app. Often leads to a double take with how on point they are.",
+   "url": "https://x.com/thsottiaux/status/2108645667451318747"
+  },
+  {
+   "at": "2026-10-10T22:15:39.000Z",
+   "zh": "重置",
+   "en": "Day 6/ Reset",
+   "url": "https://x.com/thsottiaux/status/2109045220411351517"
+  },
+  {
+   "at": "2026-10-11T23:45:59.000Z",
+   "zh": "通过 Codex 和 Work 使用 GPT-6.1 Sol 时，默认上下文长度从 272k 提高到 500k，约增加 80%。",
+   "en": "Day 7/ We have increased default context length for GPT-6.1 Sol to 500k when used through Codex & Work, up from 272k or an ~ 80% increase.",
+   "url": "https://x.com/thsottiaux/status/2109430343346581527"
+  },
+  {
+   "at": "2026-10-13T01:03:25.000Z",
+   "zh": "重置",
+   "en": "Day 8/ Reset",
+   "url": "https://x.com/thsottiaux/status/2109812216212099456"
+  },
+  {
+   "at": "2026-10-13T23:32:43.000Z",
+   "zh": "我们对 chatgpt & codex 桌面应用在磁盘上存储状态的方式进行了优化，这应该能减少 60% 的磁盘占用量。虽然这是一个小改进，但我们收到了很多关于高级用户磁盘空间不足的反馈。",
+   "en": "Day 9/ We've rolled out optimizations to how we store state on disk for the chatgpt & codex desktop app that should reduce…",
+   "url": "https://x.com/thsottiaux/status/2110151780478927344"
+  },
+  {
+   "at": "2026-10-15T04:55:51.000Z",
+   "zh": "重置",
+   "en": "Day 10/ Reset",
+   "url": "https://x.com/thsottiaux/status/2110595484180214059"
+  },
+  {
+   "at": "2026-10-15T15:11:30.000Z",
+   "zh": "我们实施了一系列更改并增加了更多算力，以显著减少“Selected model is at capacity. Please try a different model（所选模型已满负荷，请尝试其…",
+   "en": "Day 11/ We've landed a series of changes and more compute to very significantly decrease the occurrence of the disruptive…",
+   "url": "https://x.com/thsottiaux/status/2110750421367287996"
+  },
+  {
+   "at": "2026-10-16T23:55:11.000Z",
+   "zh": "我们对 Codex 和 Work 进行了改进，以提高您的有效使用率。我们通过在子代理之间重用上下文、延长上下文缓存时间以及改进请求路由（从而提高缓存命中率）实现了这一点。",
+   "en": "Day 12/ We’ve made improvements to Codex & Work that increase the effective usage you get. We achieved this by reusing…",
+   "url": "https://x.com/thsottiaux/status/2111244596131111253"
+  },
+  {
+   "at": "2026-10-17T16:20:57.000Z",
+   "zh": "限制已重置",
+   "en": "Day 13/ Le limit reset",
+   "url": "https://x.com/thsottiaux/status/2111492673890824348"
+  },
+  {
+   "at": "2026-10-22T06:55:22.000Z",
+   "zh": "第 17 天/ 你肯定以为我们忘了，但并没有，今天是重置日。 同时也是提醒大家获取 Daybreak Blue 访问权限的好时机，只需 15 分钟，你肯定不想在事故处理过程中才临时去办。",
+   "en": "Day 17/ Bet you thought we forgot, but no, it’s reset day today. Also good time to remind you to get Daybreak Blue access, it only takes 15 mins and you don’t want to have to do it in the middle of an incident.",
+   "url": "https://x.com/thsottiaux/status/2113162277688070445",
+   "day": 17
+  },
+  {
+   "at": "2026-10-23T04:46:19.000Z",
+   "zh": "第 18 天/ Decisions API 已正式发布 (GA)，OpenResponses 已加入 Linux 基金会，我们发布了一些性能改进，并且 Uber 正在全力投入 codex & work。但是，没错……这是一个重启！",
+   "en": "Day 18/ Decisions API is GA, OpenResponses joined the Linux Foundation, we shipped some performance improvements and Uber is going all-in on codex & work. But yes… that’s a reset!",
+   "url": "https://x.com/thsottiaux/status/2113492187770175603",
+   "day": 18
+  },
+  {
+   "at": "2026-10-25T03:39:31.000Z",
+   "zh": "第 20 天/ 休息与重置",
+   "en": "Day 20/ Rest and reset",
+   "url": "https://x.com/thsottiaux/status/2114200152701575656",
+   "day": 20
+  },
+  {
+   "at": "2026-10-26T05:21:22.000Z",
+   "zh": "第 21 天/ 想知道剩下的七天会发生什么。但今天是一个重置。",
+   "en": "Day 21/ Wonder what happens the remaining seven days. But today is a reset.",
+   "url": "https://x.com/thsottiaux/status/2114588174249071102",
+   "day": 21
+  },
+  {
+   "at": "2026-10-26T19:24:11.000Z",
+   "zh": "第 22 天/ Terra 回归了！ 我们的第一个在写作、个性以及对请求的细微理解方面显著提升的模型。 全方位表现强劲，非常擅长计算机使用，并且在 API 和订阅方面的使用额度是 6.1 Sol 的 2 倍。",
+   "en": "Day 22/ Terra is back! Our first model that is significantly better at writing, personality and nuanced understanding of requests. Packs a punch across the board, very good at computer use, and gives 2X more usage than 6.1 Sol across API and subscriptions.",
+   "url": "https://x.com/thsottiaux/status/2114800277677092936",
+   "day": 22
+  },
+  {
+   "at": "2026-10-28T02:42:53.000Z",
+   "zh": "第 23 天/ 许多人要求的 iCloud 主插件和日历插件。开玩笑的，今天是一个重置日。不过确实很多人要求！",
+   "en": "Day 23/ Much requested iCloud Main & Calendar plugins. Just kidding, today is a reset. Still much requested though!",
+   "url": "https://x.com/thsottiaux/status/2115273064481218829",
+   "day": 23
+  },
+  {
+   "at": "2026-10-29T16:56:07.000Z",
+   "zh": "第 25 天/ 从今天起，我们将为所有 Pro 100/200/500 层级和 Business Premium 层级的所有使用限制翻倍。 我们听取了您的宝贵反馈，不会降低 Pro 200 的使用限制，因此您的 Work 和 Codex 使用量将保持不变。目前我们也将继续为 dots 提供扩展限制，并且您的 dot 使用量仍将与您的默认使用量分开计算。 当然，我们还将继续推出更好的模型和其他效率改进，随着时间的推移，这将增加您的有效使用量。",
+   "en": "Day 25/ We are doubling all usage limits for all Pro 100/200/500 tiers and Business Premium, effective today. We heard your kind feedback and won’t be reducing usage limits for Pro 200, so your Work and Codex usage will stay the same. We’re also going to cont…",
+   "url": "https://x.com/thsottiaux/status/2115850175868727621",
+   "day": 25
+  },
+  {
+   "at": "2026-10-31T05:42:26.000Z",
+   "zh": "第 26 天/ 您现在可以在移动端轻松切换多个账号，桌面端也即将推出。接下来的两天将是重置期……已存入……随您发挥 👀。",
+   "en": "Day 26/ You can now easily switch between multiple accounts on mobile, and coming soon to desktop too. Next two days will be resets… banked… do with this what you may 👀.",
+   "url": "https://x.com/thsottiaux/status/2116405414921384099",
+   "day": 26
+  }
+ ]
+}

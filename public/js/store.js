@@ -1,7 +1,10 @@
 /**
- * The shared read loop. One place decides how often the public API is polled,
+ * The shared read loop. One place decides how often the local API is polled,
  * one place decides what a partial failure means, and views subscribe to the
  * slices they need instead of each running their own fetches.
+ *
+ * Everything here is same-origin and reads the release's own dataset; there is
+ * no third-party request anywhere in this file.
  */
 
 import { endpoints, invalidate } from './api.js';
@@ -11,18 +14,18 @@ const state = {
   locale: 'zh',
   forecast: null,
   forecastError: null,
+  rhythm: null,
+  rhythmError: null,
   status: null,
   statusError: null,
   health: null,
   timeline: null,
   timelineError: null,
-  feed: null,
-  feedError: null,
-  updatedAt: null,
 };
 
-const FORECAST_MS = 30_000;
-const STATUS_MS = 300_000;
+/** The probability moves as the wait grows, so the forecast slice is the fast one. */
+const FAST_MS = 30_000;
+const SLOW_MS = 300_000;
 
 let timers = [];
 let running = false;
@@ -48,6 +51,16 @@ async function loadForecast({ fresh = false } = {}) {
   emit('forecast');
 }
 
+async function loadRhythm({ fresh = false } = {}) {
+  try {
+    state.rhythm = await endpoints.rhythm({ locale: state.locale, fresh });
+    state.rhythmError = null;
+  } catch (error) {
+    state.rhythmError = error;
+  }
+  emit('rhythm');
+}
+
 async function loadStatus({ fresh = false } = {}) {
   try {
     state.status = await endpoints.status({ locale: state.locale, fresh });
@@ -58,24 +71,14 @@ async function loadStatus({ fresh = false } = {}) {
   emit('status');
 }
 
-async function loadTimeline() {
+async function loadTimeline({ fresh = false } = {}) {
   try {
-    state.timeline = await endpoints.timeline({ locale: state.locale, ttl: 300_000 });
+    state.timeline = await endpoints.timeline({ locale: state.locale, fresh });
     state.timelineError = null;
   } catch (error) {
     state.timelineError = error;
   }
   emit('timeline');
-}
-
-async function loadFeed() {
-  try {
-    state.feed = await endpoints.feed({ locale: state.locale, ttl: 30_000 });
-    state.feedError = null;
-  } catch (error) {
-    state.feedError = error;
-  }
-  emit('feed');
 }
 
 async function loadHealth() {
@@ -92,26 +95,29 @@ export function startStore(locale = state.locale) {
   if (running) return;
   running = true;
   state.locale = locale;
-  void loadFeed();
   void loadForecast();
+  void loadRhythm();
   void loadStatus();
   void loadTimeline();
   void loadHealth();
 
   const tick = () => {
-    void loadFeed();
     void loadForecast();
     void loadStatus();
   };
-  timers.push(setInterval(tick, FORECAST_MS));
-  timers.push(setInterval(() => void loadHealth(), STATUS_MS));
+  timers.push(setInterval(tick, FAST_MS));
+  timers.push(setInterval(() => {
+    void loadRhythm({ fresh: true });
+    void loadHealth();
+  }, SLOW_MS));
 
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
       invalidate('/api/');
-      void loadFeed();
       void loadForecast({ fresh: true });
+      void loadRhythm({ fresh: true });
       void loadStatus();
+      void loadTimeline();
     }
   });
 }
@@ -126,12 +132,12 @@ export function setLocale(locale) {
   state.locale = locale;
   invalidate('/api/');
   state.forecast = null;
+  state.rhythm = null;
   state.status = null;
   state.timeline = null;
-  state.feed = null;
   emit('locale');
-  void loadFeed();
   void loadForecast({ fresh: true });
+  void loadRhythm({ fresh: true });
   void loadStatus();
   void loadTimeline();
 }
@@ -143,4 +149,4 @@ export async function refreshForecast() {
   await loadForecast({ fresh: true });
 }
 
-export { loadFeed, loadTimeline, loadForecast };
+export { loadForecast, loadRhythm, loadStatus, loadTimeline };

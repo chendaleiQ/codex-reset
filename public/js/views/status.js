@@ -1,219 +1,249 @@
 /**
- * Status — the five Codex surfaces drawn as five service lines, plus the
- * incident ledger: what started, how long recovery took, and whether a reset
- * followed. Evidence, never outage prediction.
+ * Data status — the honest page about the site's only data source.
+ *
+ * Not an upstream status board: this page is about our own ledger — when it was
+ * last updated, what it covers, where the gaps are, what the checks say, and
+ * what the model's own backtest scored.
  */
 
-import { el, link, safeHref } from '../dom.js';
-import { endpoints } from '../api.js';
-import { statusView, surfaceTone } from '../model.js';
+import { el, link, safeXUrl } from '../dom.js';
+import { dataStatusView, forecastView } from '../model.js';
+import { getState, loadStatus, subscribe } from '../store.js';
+import { formatDateTime, formatDays, formatNumber } from '../format.js';
 import { subscribeTimeZone } from '../time-zone.js';
-import { getState, subscribe } from '../store.js';
-import { formatDateTime, formatDays, formatNumber, relativeTime } from '../format.js';
-import { leaf } from './_parts.js';
-
-const RANGE = '90d';
+import { fact, factGrid, leaf } from './_parts.js';
 
 export async function render(host, app) {
   const state = getState();
   const t = app.t;
   const locale = app.locale;
   const cleanups = [];
-  let history = null;
-  let historyError = null;
 
   host.append(
     el(
       'header',
       { class: 'page-head' },
-      el('h1', {}, t('status.h1')),
-      el('p', { class: 'lead' }, t('status.lede')),
+      el('h1', {}, t('datastatus.h1')),
+      el('p', { class: 'lead' }, t('datastatus.lead')),
     ),
   );
 
-  const incidentHost = el('div');
-  const surfacesHost = el('div');
-  const historyHost = el('div');
-  const statsHost = el('div');
+  const freshnessHost = el('div');
+  const coverageHost = el('div');
+  const gapsHost = el('div');
+  const checksHost = el('div');
+  const modelHost = el('div');
+  const sourcesHost = el('div');
 
   host.append(
-    leaf(t, { title: t('status.incident') }, incidentHost),
-    leaf(t, { title: t('status.surfaces'), note: t('status.surfacesNote') }, surfacesHost),
-    leaf(t, { title: t('status.incidents'), note: t('status.incidentsNote'), tools: statsHost }, historyHost),
+    leaf(t, { title: t('datastatus.freshness') }, freshnessHost),
+    leaf(t, { title: t('datastatus.coverage') }, coverageHost),
+    leaf(t, { title: t('datastatus.gaps'), note: t('datastatus.gapsNote') }, gapsHost),
+    leaf(t, { title: t('datastatus.checks') }, checksHost),
+    leaf(t, { title: t('datastatus.model') }, modelHost),
+    leaf(t, { title: t('datastatus.sources') }, sourcesHost),
   );
 
-  function paintIncident() {
-    const view = statusView(state.status);
-    incidentHost.replaceChildren();
-    if (!view) {
-      incidentHost.append(el('p', { class: 'empty' }, t('common.loading')));
-      return;
-    }
-    if (!view.incident) {
-      incidentHost.append(el('p', { class: 'note', dataset: { tone: 'plain' } }, t('status.noIncident')));
-      return;
-    }
-    const incident = view.incident;
-    const block = el('div', { class: 'incident', dataset: { impact: incident.impact ?? 'minor' } });
-    block.append(
-      el('span', { class: 'mark', dataset: { tone: incident.impact === 'minor' ? 'warn' : 'bad', shape: 'rule' } }, t(`state.${incident.impact === 'minor' ? 'degraded_performance' : 'partial_outage'}`)),
-      el('span', { class: 'incident-name' }, incident.name ?? ''),
-      incident.hours ? el('span', { class: 'muted' }, `${t('status.duration')} ${formatDays(incident.hours / 24, locale)}d`) : null,
-      el('span', { class: 'muted' }, relativeTime(incident.started_at, Date.now(), locale)),
-    );
-    const url = safeHref(incident.source_url ?? `https://status.openai.com/incidents/${incident.id}`);
-    if (url) block.append(link(url, `${t('status.viewOfficial')} ↗`, { external: true, className: 'chit' }));
-    incidentHost.append(block);
+  const view = () => dataStatusView(state.status);
+
+  function unavailable(node, error) {
+    node.replaceChildren(el('p', { class: 'empty' }, error ? t('common.readError') : t('common.loading')));
   }
 
-  function paintSurfaces() {
-    const view = statusView(state.status);
-    surfacesHost.replaceChildren();
-    if (!view) {
-      surfacesHost.append(el('p', { class: 'empty' }, t('common.loading')));
-      return;
-    }
-    const list = el('div', { class: 'surfaces' });
-    const palette = ['var(--line-cobalt)', 'var(--line-green)', 'var(--line-amber)', 'var(--line-violet)', 'var(--line-teal)'];
-    view.surfaces.forEach((surface, index) => {
-      const tone = surfaceTone(surface.status);
-      const track = el('div', { class: 'surface-track' }, el('span', { style: `--w:${tone === 'ok' ? 100 : tone === 'warn' ? 66 : 38}%;--track:${palette[index % palette.length]}` }));
-      list.append(
-        el(
-          'div',
-          { class: 'surface', dataset: { state: tone } },
-          el('span', { class: 'surface-name' }, el('span', { class: 'line-swatch', style: `--track:${palette[index % palette.length]}` }), surface.label),
-          track,
-          el('span', { class: 'surface-state' }, t(`state.${surface.status}`)),
+  function paintFreshness(status) {
+    freshnessHost.replaceChildren();
+    if (!status) return unavailable(freshnessHost, state.statusError);
+    const { dataset, freshness } = status;
+    const age = freshness.ageHours;
+    freshnessHost.append(
+      factGrid([
+        fact(t('datastatus.updated'), formatDateTime(status.updatedAt, locale) ?? t('common.unavailable')),
+        fact(t('datastatus.age'), age === null ? '—' : formatNumber(age, locale), t('datastatus.threshold', { n: freshness.thresholdHours }), {
+          unit: age === null ? null : locale === 'zh' ? '小时' : 'hours',
+        }),
+        fact(
+          t('datastatus.level'),
+          el('span', { class: 'mark', dataset: { tone: freshness.level === 'fresh' ? 'ok' : freshness.level === 'stale' ? 'warn' : 'plain', shape: 'rule' } }, t(`datastatus.level.${freshness.level}`)),
         ),
-      );
-    });
-    surfacesHost.append(list);
-  }
-
-  function paintStats() {
-    statsHost.replaceChildren();
-    if (!history?.stats) return;
-    const stats = history.stats;
-    const facts = el('dl', { class: 'factgrid timeline-stats' });
-    facts.append(
-      fact(t('timeline.statEvents'), formatNumber(stats.incident_count, locale), `${stats.days} ${locale === 'zh' ? '天' : 'days'}`),
-      fact(t('status.resolved'), formatNumber(stats.resolved_incident_count, locale)),
-      fact(t('status.duration'), `${formatNumber(stats.median_recovery_minutes, locale)}m`, locale === 'zh' ? '中位数' : 'median'),
+        fact(t('datastatus.events'), formatNumber(dataset.total, locale)),
+      ]),
     );
-    if (stats.recovery_to_reset_median_minutes) {
-      facts.append(
-        fact(t('status.resetFollowed'), `${formatNumber(stats.recovery_to_reset_median_minutes / 60, locale)}h`, locale === 'zh' ? '恢复后中位' : 'median after recovery'),
-      );
-    }
-    statsHost.append(facts);
   }
 
-  function paintHistory() {
-    historyHost.replaceChildren();
-    if (historyError) {
-      historyHost.append(el('p', { class: 'empty' }, t('common.readError')));
+  function paintCoverage(status) {
+    coverageHost.replaceChildren();
+    if (!status) return unavailable(coverageHost, state.statusError);
+    const { dataset } = status;
+    coverageHost.append(
+      factGrid([
+        fact(t('datastatus.first'), formatDateTime(dataset.firstAt, locale) ?? t('common.unavailable')),
+        fact(t('datastatus.lastReset'), formatDateTime(dataset.lastResetAt, locale) ?? t('common.unavailable')),
+        fact(t('datastatus.resets'), formatNumber(dataset.reset, locale)),
+        fact(t('datastatus.banked'), formatNumber(dataset.banked, locale)),
+        fact(t('datastatus.span'), formatNumber(Math.round(dataset.spanDays), locale), null, {
+          unit: locale === 'zh' ? '天' : 'days',
+        }),
+      ]),
+    );
+  }
+
+  function paintGaps(status) {
+    gapsHost.replaceChildren();
+    if (!status) return unavailable(gapsHost, state.statusError);
+    if (!status.gaps.length) {
+      gapsHost.append(el('p', { class: 'note' }, t('datastatus.noGaps')));
       return;
     }
-    if (!history) {
-      historyHost.append(el('p', { class: 'empty' }, t('common.loading')));
-      return;
-    }
-    const rows = history.incidents ?? [];
-    if (!rows.length) {
-      historyHost.append(el('p', { class: 'ledger-empty' }, t('status.noIncident')));
-      return;
-    }
-    const table = el('table', { class: 'ledger' });
+    const table = el('table', { class: 'data-table gap-table' });
     table.append(
       el(
         'thead',
         {},
-        el(
-          'tr',
-          {},
-          el('th', {}, t('status.started')),
-          el('th', {}, t('timeline.col.event')),
-          el('th', {}, t('status.duration')),
-          el('th', {}, t('status.component')),
-        ),
+        el('tr', {}, el('th', {}, t('datastatus.gapFrom')), el('th', {}, t('datastatus.gapTo')), el('th', { class: 'num' }, t('datastatus.gapDays'))),
       ),
     );
     const body = el('tbody');
-    for (const incident of rows) {
-      const started = Date.parse(incident.started_at ?? '');
-      const resolved = Date.parse(incident.resolved_at ?? '');
-      const minutes = Number.isFinite(started) && Number.isFinite(resolved) ? (resolved - started) / 60_000 : null;
-      const url = safeHref(incident.source_url);
-      const stateLabel = incident.status === 'resolved' ? t('status.resolved') : t(`state.${incident.impact === 'minor' ? 'degraded_performance' : 'partial_outage'}`);
+    for (const gap of status.gaps) {
       body.append(
         el(
           'tr',
           {},
-          el(
-            'td',
-            { class: 'ledger-time' },
-            el('span', { class: 'ledger-main' }, formatDateTime(incident.started_at, locale) ?? '—'),
-            el('span', { class: 'ledger-sub' }, relativeTime(incident.started_at, Date.now(), locale)),
-          ),
-          el(
-            'td',
-            { class: 'ledger-summary' },
-            incident.name ?? '—',
-            url ? link(url, ` ${t('common.source')}`, { external: true }) : null,
-          ),
-          el(
-            'td',
-            {},
-            el('div', { class: 'ledger-stack' }, el('span', { class: 'ledger-main' }, minutes === null ? '—' : `${formatNumber(minutes / 60, locale)}h`), el('span', { class: 'mark', dataset: { tone: incident.status === 'resolved' ? 'ok' : 'warn', shape: 'rule' } }, stateLabel)),
-          ),
-          el(
-            'td',
-            {},
-            incident.codex_related ? el('span', { class: 'chit', dataset: { tone: 'line' } }, 'Codex') : el('span', { class: 'muted' }, '—'),
-          ),
+          el('td', {}, gap.from ?? '—'),
+          el('td', {}, gap.to ?? '—'),
+          el('td', { class: 'num' }, gap.days === null ? '—' : formatDays(gap.days, locale)),
         ),
       );
     }
     table.append(body);
-    historyHost.append(el('div', { class: 'ledger-wrap' }, table));
-    if (history.methodology?.official_source) {
-      const url = safeHref(history.methodology.official_source);
-      historyHost.append(
-        el('p', { class: 'field-hint', style: 'margin-top:12px' }, `${t('footer.data')} · ${history.methodology.official_source}`),
+    gapsHost.append(el('div', { class: 'table-wrap' }, table));
+  }
+
+  const CHECK_DETAILS = {
+    'beats-baseline': 'datastatus.beats',
+    'experimental': 'datastatus.notBeats',
+    'insufficient-data': 'datastatus.insufficient',
+  };
+
+  function checkDetail(check) {
+    const key = CHECK_DETAILS[check.detail];
+    if (key) return t(key);
+    return check.detail;
+  }
+
+  function paintChecks(status) {
+    checksHost.replaceChildren();
+    if (!status) return unavailable(checksHost, state.statusError);
+    const list = el('ul', { class: 'check-list' });
+    for (const check of status.checks) {
+      const labelKey = `datastatus.check.${check.name}`;
+      const label = t(labelKey);
+      list.append(
+        el(
+          'li',
+          { class: `check ${check.ok ? 'check--ok' : 'check--bad'}`, dataset: { ok: String(check.ok) } },
+          el('span', { class: 'check-name' }, label === labelKey ? check.name : label),
+          el('span', { class: 'check-state' }, check.ok ? t('datastatus.checkOk') : t('datastatus.checkFail')),
+          el('span', { class: 'check-detail' }, checkDetail(check)),
+        ),
       );
     }
+    checksHost.append(list);
   }
 
-  paintIncident();
-  paintSurfaces();
+  function paintModel(status) {
+    modelHost.replaceChildren();
+    const forecast = forecastView(state.forecast, locale);
+    const model = status?.model ?? forecast?.model ?? null;
+    const backtest = status?.backtest ?? forecast?.backtest ?? null;
+    const params = status?.params ?? {};
+    const rows = [];
+    const push = (label, value) => {
+      if (value === null || value === undefined || value === '') return;
+      rows.push([label, value]);
+    };
+    if (model) {
+      push(t('datastatus.modelName'), model.name ? `${model.name} ${model.version ?? ''}`.trim() : null);
+      push(t('rhythm.paramHalfLife'), model.half_life_days === undefined ? null : t('rhythm.valueDays', { n: model.half_life_days }));
+      push(t('rhythm.paramShape'), model.shape_k);
+      push(t('rhythm.paramEmpirical'), model.empirical_weight);
+      push(t('rhythm.paramSample'), model.interval_sample);
+      push(t('rhythm.paramEffSample'), model.effective_sample_size);
+    } else {
+      push(t('datastatus.insufficient'), null);
+    }
+    if (params.min_gap_hours !== undefined) push(t('rhythm.paramMinGap'), t('rhythm.valueHours', { n: params.min_gap_hours }));
+    if (params.empirical_blend !== undefined) push(t('datastatus.empiricalBlend'), params.empirical_blend);
+    if (params.bootstrap_rounds !== undefined) push(t('rhythm.paramBootstrap'), params.bootstrap_rounds);
+    if (params.gap_days !== undefined) push(t('datastatus.gapThreshold'), t('rhythm.valueDays', { n: params.gap_days }));
+    if (params.stale_hours !== undefined) push(t('datastatus.staleHours'), t('rhythm.valueHours', { n: params.stale_hours }));
+
+    if (rows.length) {
+      const table = el('table', { class: 'data-table param-table' });
+      const body = el('tbody');
+      for (const [label, value] of rows) body.append(el('tr', {}, el('th', { scope: 'row' }, label), el('td', {}, String(value))));
+      table.append(body);
+      modelHost.append(el('div', { class: 'table-wrap' }, table));
+    }
+
+    if (backtest) {
+      if (backtest.brier === null || backtest.brier === undefined) {
+        modelHost.append(el('p', { class: 'note' }, t('datastatus.insufficient')));
+      } else {
+        modelHost.append(
+          factGrid([
+            fact(t('datastatus.brier'), formatNumber(backtest.brier, locale), backtest.method ?? null),
+            fact(t('datastatus.baseline'), formatNumber(backtest.baselineBrier, locale), backtest.betterThanBaseline ? t('datastatus.beats') : t('datastatus.notBeats')),
+            fact(t('rhythm.paramSample'), formatNumber(backtest.sampleSize ?? model?.sample_size, locale)),
+          ], 'factgrid backtest-facts'),
+        );
+      }
+    }
+  }
+
+  function paintSources(status) {
+    sourcesHost.replaceChildren();
+    const sources = status?.sources?.length
+      ? status.sources
+      : [{ label: t('datastatus.sourceFallback'), url: 'https://x.com/thsottiaux' }];
+    const list = el('ul', { class: 'source-list' });
+    for (const source of sources) {
+      const url = safeXUrl(source.url);
+      list.append(
+        el(
+          'li',
+          {},
+          el('span', { class: 'source-label' }, source.label ?? t('datastatus.sourceFallback')),
+          url ? link(url, `${t('datastatus.openSource')} ↗`, { external: true, className: 'table-link' }) : null,
+        ),
+      );
+    }
+    sourcesHost.append(list, el('p', { class: 'field-hint' }, t('datastatus.sourceNote')));
+  }
+
+  function paintAll() {
+    const status = view();
+    paintFreshness(status);
+    paintCoverage(status);
+    paintGaps(status);
+    paintChecks(status);
+    paintModel(status);
+    paintSources(status);
+  }
+
+  if (state.status) paintAll();
+  else {
+    paintAll();
+    await loadStatus();
+    paintAll();
+  }
 
   const unsubscribe = subscribe((slice) => {
-    if (slice === 'status') {
-      paintIncident();
-      paintSurfaces();
-    }
+    if (slice === 'status' || slice === 'forecast') paintAll();
   });
-  cleanups.push(unsubscribe, subscribeTimeZone(() => { paintIncident(); paintHistory(); }));
-
-  try {
-    history = await endpoints.statusHistory(RANGE, { locale });
-    if (history.current) state.status = state.status ?? history.current;
-  } catch (error) {
-    historyError = error;
-  }
-  paintStats();
-  paintHistory();
-  paintIncident();
-  paintSurfaces();
+  cleanups.push(unsubscribe);
+  cleanups.push(subscribeTimeZone(() => paintAll()));
 
   return () => {
     for (const cleanup of cleanups) cleanup?.();
   };
-}
-
-function fact(term, value, sub) {
-  const node = el('div', { class: 'fact' }, el('dt', {}, term), el('dd', {}, value));
-  if (sub) node.append(el('p', {}, sub));
-  return node;
 }

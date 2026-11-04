@@ -522,3 +522,169 @@
     padding: var(--s5) var(--s4);
   }
 }
+
+/* ============================================================================
+   v2 · the vigil wall's join form, the personal record and the data-status
+   source list.
+   ========================================================================= */
+
+/* --- vigil: count line + join form -------------------------------------- */
+
+.vigil-count-line {
+  margin-top: 6px;
+  font-size: var(--t-body);
+  color: var(--ink-2);
+}
+
+/* The count line is a sentence, not a numeral: the hero keeps it readable. */
+.vigil-count {
+  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  max-width: 30ch;
+}
+
+.join-block .note {
+  margin-bottom: var(--s4);
+}
+
+.join-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr) minmax(0, 0.6fr) auto;
+  gap: var(--s4);
+  align-items: end;
+  max-width: 760px;
+}
+
+.join-form .field input {
+  width: 100%;
+}
+
+.join-actions {
+  display: flex;
+  align-items: end;
+}
+
+.join-actions .btn {
+  white-space: nowrap;
+}
+
+.field-error {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  font-size: var(--t-ui);
+  color: var(--bad-text);
+  max-width: 62ch;
+}
+
+/* --- vigil: the wall ---------------------------------------------------- */
+
+.vigil-wall-block {
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.vigil-wall-block .wall-item {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto auto;
+}
+
+.wall-name .wall-place {
+  margin-left: 8px;
+  font-weight: 400;
+}
+
+.wall-amen .wall-amen-count:empty {
+  display: none;
+}
+
+/* --- vigil: previous cycles --------------------------------------------- */
+
+.archive-list {
+  list-style: none;
+  margin-top: var(--s3);
+  border-top: 1px solid var(--hair);
+}
+
+.archive-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: 9px 0;
+  border-bottom: 1px solid var(--hair);
+  font-size: var(--t-ui);
+  max-width: none;
+}
+
+.archive-date {
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.archive-count {
+  color: var(--ink-3);
+  font-size: var(--t-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- data status: sources ----------------------------------------------- */
+
+.source-list {
+  list-style: none;
+  border-top: 1px solid var(--hair-strong);
+}
+
+.source-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s4);
+  align-items: baseline;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--hair);
+  max-width: none;
+}
+
+.source-label {
+  color: var(--ink);
+}
+
+.source-list + .field-hint {
+  margin-top: var(--s4);
+}
+
+/* --- responsive --------------------------------------------------------- */
+
+@media (max-width: 760px) {
+  .join-form {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .join-form .field:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .join-actions {
+    grid-column: 1 / -1;
+  }
+
+  .join-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .vigil-wall-block .wall-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px var(--s3);
+  }
+
+  .vigil-wall-block .wall-days,
+  .vigil-wall-block .wall-age {
+    grid-column: 1;
+  }
+
+  .vigil-wall-block .wall-amen {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+}

@@ -1,7 +1,9 @@
-/** Shared view parts: the leaf, the charts, the line strip, the pulse feed. */
+/** Shared view parts: the leaf, the fact grid, the heatmap, the charts, the FAQ. */
 
-import { el, icon, link, safeHref, safeXUrl, svgEl } from '../dom.js';
-import { formatCompact, formatDay, formatDateTime, formatDays, formatNumber, relativeTime } from '../format.js';
+import { el, icon, link, safeHref, svgEl } from '../dom.js';
+import { formatCompact, formatDay, formatDateTime, formatDays, formatNumber } from '../format.js';
+
+/* -------------------------------------------------------------------- leaf */
 
 export function leaf(t, { title, note, tools, id }, ...children) {
   const head = el('div', { class: 'leaf-head' }, el('h2', {}, title));
@@ -10,40 +12,114 @@ export function leaf(t, { title, note, tools, id }, ...children) {
   return el('section', { class: 'leaf', ...(id ? { id } : {}) }, head, ...children);
 }
 
-/* ------------------------------------------------------------------ line strip */
+/* -------------------------------------------------------------------- facts */
 
-export function linesStrip(surfaces, t) {
-  const rows = el('div', { class: 'lines' });
-  for (const surface of surfaces) {
-    const tone = ['degraded_performance', 'under_maintenance'].includes(surface.status)
-      ? 'warn'
-      : ['partial_outage', 'major_outage'].includes(surface.status)
-        ? 'bad'
-        : 'ok';
-    rows.append(
+/** One labelled figure: term, value, an optional note under it, an optional unit. */
+export function fact(term, value, sub, { unit } = {}) {
+  const dd = el('dd', {}, value);
+  if (unit) dd.append(el('span', { class: 'unit' }, unit));
+  if (sub) dd.append(el('p', {}, sub));
+  return el('div', { class: 'fact' }, el('dt', {}, term), dd);
+}
+
+export function factGrid(facts, className = 'factgrid') {
+  return el('dl', { class: className }, ...facts.filter(Boolean));
+}
+
+/** A labelled figure, or the honest "no data" placeholder. */
+export const valueOr = (text, fallback) => (text === null || text === undefined || text === '' ? fallback : text);
+
+/* --------------------------------------------------------------- the heatmap */
+
+export const padHour = (hour) => `${String(Math.max(0, Math.min(23, Number(hour) || 0))).padStart(2, '0')}:00`;
+
+/**
+ * Weekday × hour grid. Monday is row 0, columns are UTC hours, exactly as the
+ * server renderer writes it, so one stylesheet shades both.
+ */
+export function heatmapBlock({ heatmap, weekdayLabels, t, total, locale = 'zh' }) {
+  const rows = Array.isArray(heatmap) ? heatmap : [];
+  const max = rows.flat().reduce((peak, value) => Math.max(peak, Number(value) || 0), 0);
+  const dayLabels = Array.isArray(weekdayLabels) && weekdayLabels.length === 7 ? weekdayLabels : [];
+
+  const grid = el('div', { class: 'heatmap-grid' }, el('span', { class: 'heatmap-corner', 'aria-hidden': 'true' }));
+  for (let hour = 0; hour < 24; hour += 1) {
+    grid.append(el('span', { class: 'heatmap-hour', 'aria-hidden': 'true' }, String(hour).padStart(2, '0')));
+  }
+  for (let day = 0; day < 7; day += 1) {
+    const label = dayLabels[day] ?? String(day);
+    grid.append(el('span', { class: 'heatmap-day' }, label));
+    for (let hour = 0; hour < 24; hour += 1) {
+      const count = Number(rows[day]?.[hour]) || 0;
+      const level = count === 0 || max === 0 ? 0 : count / max <= 0.25 ? 1 : count / max <= 0.5 ? 2 : count / max <= 0.75 ? 3 : 4;
+      grid.append(
+        el('span', {
+          class: 'heatmap-cell',
+          dataset: { level: String(level) },
+          title: t('heatmap.cellTitle', { day: label, hour: String(hour).padStart(2, '0'), count }),
+        }),
+      );
+    }
+  }
+
+  return el(
+    'div',
+    { class: 'heatmap', role: 'img', 'aria-label': t('heatmap.aria', { n: formatNumber(total ?? rows.flat().reduce((sum, value) => sum + (Number(value) || 0), 0), locale) }) },
+    grid,
+    el('p', { class: 'heatmap-legend' }, t('heatmap.legend')),
+  );
+}
+
+/* ------------------------------------------------------------ window list */
+
+export function windowList(windows, t) {
+  const rows = Array.isArray(windows) ? windows : [];
+  if (!rows.length) return el('p', { class: 'empty' }, t('verdict.windowNone'));
+  const list = el('ol', { class: 'window-list' });
+  for (const window of rows) {
+    const range = `${padHour(window.startHour)}–${padHour(window.endHour)}`;
+    list.append(
       el(
-        'div',
-        { class: 'line-row', dataset: { state: tone } },
-        el('span', { class: 'line-swatch', 'aria-hidden': 'true' }),
-        el('span', { class: 'line-name' }, surface.label),
-        el('span', { class: 'line-state' }, t(`state.${surface.status}`)),
+        'li',
+        { class: 'window-row' },
+        el('span', { class: 'window-index', 'aria-hidden': 'true' }, String(rows.indexOf(window) + 1)),
+        el(
+          'span',
+          { class: 'window-main' },
+          el('span', { class: 'window-range' }, `UTC ${range}`),
+          el(
+            'span',
+            { class: 'window-bar', 'aria-hidden': 'true' },
+            el('span', { style: `--w:${Math.max(0, Math.min(100, Number(window.share) || 0))}%` }),
+          ),
+        ),
+        el(
+          'span',
+          { class: 'window-meta' },
+          `${formatCompact(window.count)} · ${window.share === null ? '—' : `${window.share}%`}`,
+        ),
       ),
     );
   }
-  return rows;
+  return list;
 }
 
 /* ---------------------------------------------------------------- rhythm chart */
 
 const RHYTHM_H = 228;
 
-export function rhythmChart(gaps, { locale, t, readout }) {
+/**
+ * One bar per completed interval, oldest on the left. `rows` need `{ days, at }`
+ * and may carry `{ event }` for the source link; an optional readout node gets
+ * the hovered pair in words.
+ */
+export function rhythmChart(rows, { locale, t, readout }) {
   const wrap = el('div', { class: 'rhythm-chart' });
   const plot = el('div', { class: 'plot' });
-  const caption = el('p', { class: 'rhythm-legend' });
+  const caption = el('p', { class: 'rhythm-legend' }, t('rhythm.distributionNote'));
   wrap.append(plot, caption);
-  if (!gaps.length) {
-    plot.append(el('p', { class: 'empty' }, t('timeline.empty')));
+  if (!rows.length) {
+    plot.append(el('p', { class: 'empty' }, t('common.unavailable')));
     return wrap;
   }
 
@@ -55,9 +131,9 @@ export function rhythmChart(gaps, { locale, t, readout }) {
     const padB = 34;
     const innerW = width - padL - padR;
     const innerH = RHYTHM_H - padT - padB;
-    const maxDays = Math.ceil(Math.max(...gaps.map((g) => g.days)) + 1);
-    const mean = gaps.reduce((sum, g) => sum + g.days, 0) / gaps.length;
-    const step = innerW / gaps.length;
+    const maxDays = Math.ceil(Math.max(...rows.map((row) => row.days)) + 1);
+    const mean = rows.reduce((sum, row) => sum + row.days, 0) / rows.length;
+    const step = innerW / rows.length;
     const barW = Math.max(3, Math.min(28, step - Math.max(3, step * 0.28)));
     const scaleY = (days) => padT + innerH - (days / maxDays) * innerH;
     const ticks = [0, Math.round(maxDays / 2), maxDays];
@@ -74,11 +150,11 @@ export function rhythmChart(gaps, { locale, t, readout }) {
     }
 
     const bars = svgEl('g', { class: 'plot-bars' });
-    gaps.forEach((gap, index) => {
+    rows.forEach((row, index) => {
       const x = padL + index * step + (step - barW) / 2;
-      const y = scaleY(gap.days);
+      const y = scaleY(row.days);
       const group = svgEl('g', { tabindex: '0', role: 'listitem' });
-      const hot = gap.days >= mean;
+      const hot = row.days >= mean;
       group.append(
         svgEl('rect', {
           x,
@@ -88,20 +164,21 @@ export function rhythmChart(gaps, { locale, t, readout }) {
           'data-hot': String(hot),
           rx: 1,
         }),
-        svgEl('title', {}, `${formatDay(new Date(gap.at).toISOString(), locale) ?? ''} · ${formatDays(gap.days, locale)}d`),
+        svgEl('title', {}, `${formatDay(row.at, locale) ?? ''} · ${formatDays(row.days, locale)} ${locale === 'zh' ? '天' : 'days'}`),
       );
       const describe = () => {
         if (!readout) return;
         readout.replaceChildren(
-          el('strong', {}, `${formatDays(gap.days, locale)} ${locale === 'zh' ? '天' : 'days'}`),
+          el('strong', {}, `${formatDays(row.days, locale)} ${locale === 'zh' ? '天' : 'days'}`),
           document.createTextNode(
-            ` — ${formatDay(new Date(gap.at).toISOString(), locale) ?? ''} ${locale === 'zh' ? '重置，距上一次' : 'reset, after'} ${formatDays(gap.days, locale)} ${locale === 'zh' ? '天' : 'days'}`,
+            ` — ${formatDay(row.at, locale) ?? ''} ${locale === 'zh' ? '重置，距上一次' : 'reset, after'} ${formatDays(row.days, locale)} ${locale === 'zh' ? '天' : 'days'}`,
           ),
         );
       };
       group.addEventListener('mouseenter', describe);
       group.addEventListener('focus', describe);
-      group.addEventListener('click', () => link(gap.event.url, '').click?.());
+      const url = safeHref(row.event?.sourceUrl ?? row.event?.url ?? '');
+      if (url) group.addEventListener('click', () => window.open(url, '_blank', 'noopener'));
       bars.append(group);
     });
 
@@ -127,220 +204,9 @@ export function rhythmChart(gaps, { locale, t, readout }) {
   return wrap;
 }
 
-/* ------------------------------------------------------------- hour histogram */
-
-export function hoursChart(buckets, { locale, t, zone = 'UTC' }) {
-  const max = Math.max(1, ...buckets);
-  const peakFloor = Math.max(1, Math.round(max * 0.5));
-  const nowHour = zone === 'UTC' ? new Date().getUTCHours() : new Date().getHours();
-  const plot = el('div', { class: 'hours-plot' });
-  const labels = el('div', { class: 'hours-labels' });
-  for (let h = 0; h < 24; h += 1) {
-    const peak = buckets[h] >= peakFloor;
-    const cell = el(
-      'div',
-      {
-        class: 'hours-cell',
-        dataset: { peak: String(peak), now: String(h === nowHour) },
-        title: `${String(h).padStart(2, '0')}:00 · ${buckets[h]} ${locale === 'zh' ? '次' : 'events'}`,
-      },
-      el('span', { class: 'hours-bar', style: `--h:${Math.round((buckets[h] / max) * 100)}%` }),
-    );
-    plot.append(cell);
-    labels.append(el('span', { dataset: { peak: String(peak) } }, String(h).padStart(2, '0')));
-  }
-  return el('div', { class: 'stack' }, plot, labels, el('p', { class: 'clock-verdict' }, t('radar.hoursNote')));
-}
-
-/* ----------------------------------------------------------------- pulse feed */
-
-const TIBO_PROFILE = 'https://x.com/thsottiaux';
-const LINK_TOKEN = /(https?:\/\/[^\s]+|@[A-Za-z0-9_]{1,15}|#[\p{L}\p{N}_]+)/gu;
-const URL_TRAIL = /[.,!?;:)\]'"”’。，！？；：、）】]+$/u;
-
-/** Links, mentions and hashtags are what make a post read as a tweet. */
-function linkify(value) {
-  const source = String(value ?? '');
-  const nodes = [];
-  let last = 0;
-  for (const match of source.matchAll(LINK_TOKEN)) {
-    let token = match[0];
-    let trail = '';
-    if (token.startsWith('http')) {
-      const trimmed = token.replace(URL_TRAIL, '');
-      trail = token.slice(trimmed.length);
-      token = trimmed;
-    }
-    if (match.index > last) nodes.push(document.createTextNode(source.slice(last, match.index)));
-    if (token.startsWith('http')) {
-      nodes.push(link(token, token, { external: true, className: 'feed-link' }));
-    } else if (token.startsWith('@')) {
-      nodes.push(link(`https://x.com/${token.slice(1)}`, token, { external: true, className: 'feed-link' }));
-    } else {
-      nodes.push(
-        link(`https://x.com/hashtag/${encodeURIComponent(token.slice(1))}`, token, { external: true, className: 'feed-link' }),
-      );
-    }
-    if (trail) nodes.push(document.createTextNode(trail));
-    last = match.index + match[0].length;
-  }
-  if (last < source.length) nodes.push(document.createTextNode(source.slice(last)));
-  return nodes;
-}
-
-/**
- * One post as a single-author tweet: avatar, author line, text, engagement.
- * The evidence category stays on the row, so a social-looking post never
- * passes for a verified reset.
- */
-export function feedItem(post, { t, locale, now = Date.now() }) {
-  const kindKey = `radar.kind.${post.kind}`;
-  const kindLabel = t(kindKey);
-  const kindNote = t(`radar.kindNote.${post.kind}`);
-  const xUrl = safeXUrl(post.url);
-  const when = relativeTime(post.at, now, locale);
-  const absolute = formatDateTime(post.at, locale);
-
-  const kind = el(
-    'span',
-    { class: 'feed-kind', dataset: { kind: post.kind }, title: kindNote === `radar.kindNote.${post.kind}` ? undefined : kindNote },
-    kindLabel === kindKey ? post.kind : kindLabel,
-  );
-
-  let time;
-  if (xUrl) {
-    time = link(xUrl, when, { external: true, className: 'feed-time' });
-    if (absolute) time.title = absolute;
-  } else {
-    time = el('time', { class: 'feed-time', datetime: post.at ?? undefined }, when);
-  }
-
-  const author = link(TIBO_PROFILE, 'Tibo', { external: true, className: 'feed-author' });
-  author.append(
-    el(
-      'span',
-      { class: 'feed-verified', role: 'img', 'aria-label': t('feed.verified'), title: t('feed.verified') },
-      icon('check', { size: 10 }),
-    ),
-  );
-
-  const head = el(
-    'header',
-    { class: 'feed-head' },
-    author,
-    el('span', { class: 'feed-handle' }, '@thsottiaux'),
-    el('span', { class: 'feed-sep', 'aria-hidden': 'true' }, '·'),
-    time,
-    kind,
-  );
-
-  const body = el('div', { class: 'feed-body' }, head);
-  if (post.isReply && post.replyingTo) {
-    body.append(el('p', { class: 'feed-reply' }, t('feed.replyingTo', { handle: post.replyingTo })));
-  }
-
-  const translated = locale !== 'en' && post.localizedText && post.localizedText !== post.text;
-  body.append(el('p', { class: 'feed-text' }, ...linkify(translated ? post.localizedText : post.text || post.localizedText || '')));
-  if (translated) {
-    body.append(
-      el(
-        'details',
-        { class: 'translation' },
-        el('summary', {}, t('common.showOriginal')),
-        el('p', {}, ...linkify(post.text)),
-      ),
-    );
-  }
-
-  const foot = el('div', { class: 'feed-foot' });
-  if (post.replies || post.reposts || post.likes) {
-    const stats = el('span', { class: 'feed-stats' });
-    const stat = (name, value, labelKey) =>
-      el(
-        'span',
-        { class: 'feed-stat', title: t(labelKey) },
-        icon(name, { size: 16 }),
-        el('span', { class: 'sr-only' }, t(labelKey)),
-        formatCompact(value, locale),
-      );
-    if (post.replies) stats.append(stat('reply', post.replies, 'feed.replies'));
-    if (post.reposts) stats.append(stat('repost', post.reposts, 'feed.reposts'));
-    if (post.likes) stats.append(stat('heart', post.likes, 'feed.likes'));
-    foot.append(stats);
-  }
-  if (xUrl) {
-    const open = link(xUrl, t('common.viewOnX'), { external: true, className: 'feed-open' });
-    open.append(icon('external', { size: 13 }));
-    foot.append(open);
-  }
-  if (foot.childElementCount) body.append(foot);
-
-  const avatar = link(
-    TIBO_PROFILE,
-    el('img', { src: '/img/tibo-avatar.jpg', alt: '', width: 48, height: 48, loading: 'lazy', decoding: 'async' }),
-    { external: true, className: 'feed-avatar' },
-  );
-  avatar.setAttribute('aria-label', 'Tibo (@thsottiaux)');
-
-  return el('article', { class: 'feed-item', dataset: { kind: post.kind } }, avatar, body);
-}
-
-/* ----------------------------------------------------------------- crowd poll */
-
-export function pollBlock(poll, { t, locale, onVote }) {
-  const wrap = el('div', { class: 'stack' });
-  if (!poll) {
-    wrap.append(el('p', { class: 'empty' }, t('poll.closed')));
-    return wrap;
-  }
-  const rows = el('div', { class: 'poll' });
-  const unlocked = poll.unlocked;
-  for (const bucket of poll.buckets) {
-    const label = t(`poll.window.${bucket.id}`);
-    const row = el(
-      'div',
-      { class: 'poll-row', dataset: { mine: String(false), locked: String(!unlocked) } },
-      el('span', { class: 'poll-label' }, label),
-      el('span', { class: 'poll-bar' }, el('span', { style: `--w:${unlocked ? bucket.share : 0}%` })),
-      el('span', { class: 'poll-share' }, unlocked ? `${bucket.share}%` : '—'),
-    );
-    rows.append(row);
-  }
-  wrap.append(rows);
-
-  const choices = el('div', { class: 'poll-choice' });
-  for (const id of poll.openBuckets) {
-    choices.append(
-      el('button', { type: 'button', class: 'filter', onclick: () => onVote?.(id) }, t(`poll.window.${id}`)),
-    );
-  }
-  if (poll.openBuckets.length) wrap.append(choices);
-
-  const meta = el('p', { class: 'field-hint' });
-  const parts = [];
-  parts.push(t('poll.votes', { n: formatNumber(poll.totalVotes, locale) }));
-  if (!unlocked) parts.push(t('poll.locked', { n: formatNumber(Math.max(0, poll.minVotes - poll.totalVotes), locale) }));
-  if (poll.accuracy) {
-    parts.push(
-      t('poll.accuracy', {
-        resolved: formatNumber(poll.accuracy.resolved_polls, locale),
-        correct: formatNumber(poll.accuracy.crowd_correct, locale),
-        pct: formatNumber(poll.accuracy.crowd_accuracy, locale),
-      }),
-    );
-  }
-  if (poll.model) {
-    parts.push(t('poll.modelLine', { h24: poll.model.displayed_24h ?? '—', h48: poll.model.displayed_48h ?? '—' }));
-  }
-  meta.textContent = parts.join(' · ');
-  wrap.append(meta);
-  return wrap;
-}
-
 /* ---------------------------------------------------------------------- FAQ */
 
-export function faqBlock(t) {
-  const keys = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6'];
+export function faqBlock(t, keys = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6']) {
   const list = el('div', { class: 'faq' });
   for (const key of keys) {
     list.append(
@@ -375,4 +241,4 @@ export function sourceLink(t, href, label) {
   });
 }
 
-export { formatDateTime, formatCompact, formatDays, formatDay };
+export { formatDateTime, formatCompact, formatDays, formatDay, icon };

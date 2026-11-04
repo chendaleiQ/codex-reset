@@ -16,7 +16,7 @@ GitHub 仓库需配置两个 Actions secrets：
 
 工作流仅有仓库读取权限，官方 Actions 固定到提交；凭据写入 runner 临时目录并在结束时删除。
 发布串行执行，不中途取消正在切换的任务；服务器文件锁也防止与手动发布重叠。
-Actions 只允许打包触发提交的干净工作区，发布后核对公网 `release.commit`、发布 ID、内容指纹、静态文件和实际 feed。
+Actions 只允许打包触发提交的干净工作区，发布后核对公网 `release.commit`、发布 ID、内容指纹、静态文件、台账接口与概率接口。
 只有这些检查通过，工作流才报告成功。若公网验证失败，工作流会报错；先检查原因，再按需回滚。
 
 ## 手动发布、状态与回滚
@@ -36,12 +36,22 @@ bash deploy/remote-deploy.sh rollback
 
 脚本先运行日历、HTTP 与发布验证器的回归检查，将文件复制成独立快照，再上传至 `/root/codex-reset/releases/<发布ID>`。
 服务器验证所有文件摘要，在 blue / green 两个容器槽位间切换，分别绑定 `127.0.0.1:8091` 和 `8092`。
-候选容器的健康接口和真实 feed 通过后，才切换 `/root/codex-reset/active-proxy.conf` 并平滑加载 Nginx。
+候选容器的健康接口、`/api/timeline` 事件数与 `/api/forecast` 模型样本通过后，才切换 `/root/codex-reset/active-proxy.conf` 并平滑加载 Nginx。
 已配置 HTTPS 时还会核对 TLS 入口返回的发布 ID，失败恢复旧入口；上一版本保留以供回滚。
 切换成功后，从发布机器通过公网核对当前发布和全部静态文件；不要同时进行手动发布和 Actions 发布。
 
 每个容器使用非 root 用户、只读文件系统、192MB 内存上限、自动重启和滚动日志。
 发布不会清理其他项目的容器、镜像或数据。
+
+## 祈祷墙的持久化目录（v2 新增）
+
+`/vigil` 的写入是本项目唯一的可变状态。容器本身是 `--read-only`，所以：
+
+- 宿主机目录 `/root/codex-reset/state` 通过 `-v` 挂到容器内 `/app/state`，容器以 `STATE_DIR=/app/state` 启动；
+- `activate.sh` 在启动容器前 `mkdir -p` 并 `chown 1000:1000`（镜像里的 `node` 用户）；
+- blue / green 两个槽位共用这个目录，切换发布不会丢墙上的名字；
+- 备份只需拷贝 `state/vigil.json`；清空就删这个文件（会重建）。
+- 目录不可写时接口返回 `503 storage_unavailable`，页面明确提示「现在无法保存」，不会假装成功。
 
 ## 首次接入
 
@@ -51,7 +61,7 @@ bash deploy/remote-deploy.sh rollback
    `/www/server/panel/vhost/cert/codex-reset.opentunnel.asia/`，文件名为 `fullchain.pem` 和 `privkey.pem`。
 4. 将 `deploy/codex-reset.nginx.conf` 安装为 `/www/server/panel/vhost/nginx/codex-reset.conf`。
    先运行 `nginx -t`，成功后执行 `nginx -s reload`。
-5. 从公网检查 HTTPS、`/__health`、`/api/feed?locale=zh` 和实际页面。
+5. 从公网检查 HTTPS、`/__health`、`/api/timeline`、`/api/forecast` 和实际页面。
 
 服务器的 HTTP 80 端口目前会被阿里云备案提示拦截，HTTP-01 证书验证不可用。
 使用服务器现有 acme.sh / Let's Encrypt 账户进行 DNS 验证。未配置 DNS API 凭据时，
@@ -74,12 +84,14 @@ bash deploy/remote-deploy.sh rollback
 
 ```bash
 curl -fsS https://codex-reset.opentunnel.asia/__health
-curl -fsS 'https://codex-reset.opentunnel.asia/api/feed?locale=zh'
+curl -fsS 'https://codex-reset.opentunnel.asia/api/timeline'
+curl -fsS 'https://codex-reset.opentunnel.asia/api/forecast'
 ```
 
 健康检查通过只表示应用进程正常。发布后仍需核对实际页面、接口数据和活动日历内容。
 
 2026-10-19 公网检查通过：HTTPS 证书验证、四个页面路由、feed / timeline / status 接口，以及 29 个静态文件的字节比对。
+（v2 起 `feed` 换成自建 `timeline` / `forecast` / `rhythm`，见下节。）
 首次手动发布 ID 为 `20261019T100446Z-2efac1dbe3ff`，当时包含基于 `d007eb3` 的未提交修复；
 不能用该 Git 提交代替那次发布内容。首次接入已实际回滚至 blue 后恢复 green。
 后续当前版本以 `/__health` 和 GitHub Actions 运行记录为准。

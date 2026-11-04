@@ -37,9 +37,14 @@ PY
     [[ "$SLOT" != "$CURRENT" ]] || exit 2
     docker rm -f "$CONTAINER"
   fi
+  # The vigil wall is the one writable surface; it lives outside the read-only
+  # container so a blue-green switch keeps the entries.
+  mkdir -p "$ROOT/state"
+  chown 1000:1000 "$ROOT/state" 2>/dev/null || true
   docker run -d --name "$CONTAINER" --restart unless-stopped --init \
     --read-only --cap-drop ALL --security-opt no-new-privileges \
     --memory 192m --log-opt max-size=10m --log-opt max-file=3 \
+    -e STATE_DIR=/app/state -v "$ROOT/state:/app/state" \
     -p "127.0.0.1:$PORT:3000" "codex-reset:$RELEASE"
 else
   docker start "$CONTAINER" >/dev/null
@@ -54,9 +59,13 @@ for i in $(seq 1 30); do
   sleep 2
 done
 [[ "$READY" == 1 ]] || { docker logs --tail=40 "$CONTAINER"; exit 1; }
-# The real upstream must work from inside the candidate before switching traffic.
-curl -fsS --max-time 25 "http://127.0.0.1:$PORT/api/feed?locale=zh" > candidate-feed.json
-python3 -c 'import json; d=json.load(open("candidate-feed.json")); assert isinstance(d.get("tweets"),list) and len(d["tweets"])>0'
+# The candidate must be serving its own dataset before switching traffic: the
+# release ships the ledger, so an empty or unreadable one is a failed build.
+curl -fsS --max-time 25 "http://127.0.0.1:$PORT/api/timeline" > candidate-timeline.json
+python3 -c 'import json; d=json.load(open("candidate-timeline.json")); assert isinstance(d.get("events"),list) and len(d["events"])>50'
+curl -fsS --max-time 25 "http://127.0.0.1:$PORT/api/forecast" > candidate-forecast.json
+python3 -c 'import json; d=json.load(open("candidate-forecast.json")); assert d["model"]["interval_sample"]>0 and isinstance(d["probabilities"]["rounded_24h"],int)'
+rm -f candidate-timeline.json candidate-forecast.json
 HAD_PROXY=0
 if [[ -f active-proxy.conf ]]; then cp active-proxy.conf proxy-before-deploy.conf; HAD_PROXY=1; fi
 printf 'proxy_pass http://127.0.0.1:%s;\n' "$PORT" > active-proxy.conf.new

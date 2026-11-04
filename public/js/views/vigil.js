@@ -1,16 +1,18 @@
 /**
- * Vigil — the community counter that grew around the resets, plus the genuinely
- * useful thing underneath it: an hour-by-hour record of when resets actually
- * land. The counter is read-only here; the mirror writes nothing upstream.
+ * Vigil — the wall of people waiting for the next reset, plus the genuinely
+ * useful thing underneath it: an hour-by-hour record of when resets land.
+ *
+ * The wall is the one writable surface on the site. Names stay in this
+ * browser's localStorage as a personal record; the wall itself lives on the
+ * server and is refreshed every minute.
  */
 
-import { el, icon, link, safeXUrl } from '../dom.js';
+import { el, icon } from '../dom.js';
 import { endpoints } from '../api.js';
-import { vigilView, timelineView, crowdSize, hourHistogram } from '../model.js';
+import { crowdSize, hourHistogram, readVigil, timelineView, vigilView, writeVigil } from '../model.js';
 import { getState, loadTimeline, subscribe } from '../store.js';
 import { flag, formatClock, formatDay, formatNumber, relativeTime } from '../format.js';
 import { errorBlock, faqBlock, leaf } from './_parts.js';
-
 import { getTimeZone, hourInZone, subscribeTimeZone, zoneLabel } from '../time-zone.js';
 
 const REFRESH_MS = 60_000;
@@ -22,6 +24,8 @@ export async function render(host, app) {
   const cleanups = [];
   let vigil = null;
   let vigilError = null;
+  let submitting = false;
+  let pendingAmen = new Set();
 
   host.append(
     el(
@@ -33,22 +37,26 @@ export async function render(host, app) {
   );
 
   const countHost = el('div', { class: 'vigil-hero' });
+  const joinHost = el('div', { class: 'join-block' });
   const wallHost = el('div', { class: 'vigil-wall-block' });
   const clockHost = el('div', { class: 'clock-plot' });
   const profileHost = el('div');
 
   host.append(
     el('section', { class: 'leaf', style: 'border-top:0;margin-top:0;padding-top:0' }, countHost),
-    leaf(t, { title: t('vigil.wall') }, wallHost),
+    leaf(t, { title: t('vigil.joinTitle'), note: t('vigil.joinNote') }, joinHost),
+    leaf(t, { title: t('vigil.wall'), note: t('vigil.wallNote') }, wallHost),
     leaf(t, { title: t('vigil.sleepTitle'), note: t('vigil.sleepNote') }, clockHost),
     leaf(t, { title: t('vigil.profile'), note: t('vigil.profileNote') }, profileHost),
     leaf(t, { title: t('vigil.faq') }, faqBlock(t)),
   );
 
+  /* --- count -------------------------------------------------------------- */
+
   function paintCount() {
     countHost.replaceChildren();
     if (vigilError) {
-      countHost.append(errorBlock(t, { onRetry: () => void loadVigil() }));
+      countHost.append(errorBlock(t, { onRetry: () => void loadVigil({ fresh: true }) }));
       return;
     }
     if (!vigil) {
@@ -58,7 +66,7 @@ export async function render(host, app) {
     const left = el('div');
     left.append(
       el('p', { class: 'field-label' }, t('vigil.believers')),
-      el('p', { class: 'vigil-count' }, vigil.believers ? formatNumber(vigil.believers, locale) : '—'),
+      el('p', { class: 'vigil-count' }, t('vigil.countLine', { n: formatNumber(vigil.believers, locale) })),
       el(
         'p',
         { class: 'vigil-meta' },
@@ -83,10 +91,139 @@ export async function render(host, app) {
     countHost.append(left, right);
   }
 
+  /* --- join form ---------------------------------------------------------- */
+
+  function paintJoin() {
+    joinHost.replaceChildren();
+    if (vigil && vigil.writable === false) {
+      joinHost.append(el('p', { class: 'note', dataset: { tone: 'warn' } }, t('vigil.readOnly')));
+      return;
+    }
+    const nameInput = el('input', {
+      type: 'text',
+      name: 'name',
+      id: 'vigil-name',
+      required: true,
+      minlength: '1',
+      maxlength: '24',
+      autocomplete: 'nickname',
+      placeholder: t('vigil.namePlaceholder'),
+      'aria-describedby': 'vigil-join-error',
+    });
+    const daysInput = el('input', {
+      type: 'number',
+      name: 'days',
+      id: 'vigil-days',
+      min: '0',
+      max: '365',
+      step: '1',
+      inputmode: 'numeric',
+    });
+    const countryInput = el('input', {
+      type: 'text',
+      name: 'country',
+      id: 'vigil-country',
+      maxlength: '2',
+      pattern: '[A-Za-z]{2}',
+      autocomplete: 'country',
+      placeholder: t('vigil.countryPlaceholder'),
+    });
+    const submit = el('button', { type: 'submit', class: 'btn btn--primary' }, t('vigil.submit'));
+    const error = el('p', { class: 'field-error', id: 'vigil-join-error', role: 'alert', hidden: true });
+
+    const form = el(
+      'form',
+      { class: 'join-form', novalidate: true },
+      el('div', { class: 'field' }, el('label', { for: 'vigil-name' }, t('vigil.name')), nameInput),
+      el('div', { class: 'field' }, el('label', { for: 'vigil-days' }, t('vigil.days')), daysInput),
+      el('div', { class: 'field' }, el('label', { for: 'vigil-country' }, t('vigil.country')), countryInput),
+      el('div', { class: 'join-actions' }, submit),
+      error,
+    );
+
+    const showError = (message) => {
+      error.textContent = message;
+      error.hidden = false;
+    };
+
+    const validate = () => {
+      const name = String(nameInput.value ?? '').replace(/\s+/g, ' ').trim();
+      if (!name || [...name].length > 24) {
+        showError(t('vigil.nameError'));
+        nameInput.focus();
+        return null;
+      }
+      const rawDays = String(daysInput.value ?? '').trim();
+      let days = 0;
+      if (rawDays) {
+        const parsed = Number(rawDays);
+        if (!Number.isFinite(parsed) || parsed < 0 || parsed > 365) {
+          showError(t('vigil.daysError'));
+          daysInput.focus();
+          return null;
+        }
+        days = Math.round(parsed);
+      }
+      const rawCountry = String(countryInput.value ?? '').trim().toUpperCase();
+      if (rawCountry && !/^[A-Z]{2}$/.test(rawCountry)) {
+        showError(t('vigil.countryError'));
+        countryInput.focus();
+        return null;
+      }
+      return { name, days, country: rawCountry || undefined };
+    };
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (submitting) return;
+      error.hidden = true;
+      const entry = validate();
+      if (!entry) return;
+      submitting = true;
+      submit.disabled = true;
+      submit.textContent = t('vigil.submitting');
+      try {
+        const result = await endpoints.joinVigil(entry);
+        const saved = result?.entry ?? { id: '', name: entry.name, days: entry.days, country: entry.country ?? null, at: new Date().toISOString() };
+        writeVigil({
+          epochId: vigil?.epochId ?? '',
+          id: saved.id ?? '',
+          name: saved.name ?? entry.name,
+          days: Number(saved.days) || 0,
+          at: saved.at ?? new Date().toISOString(),
+          tendedAt: '',
+          amens: readVigil().amens,
+        });
+        form.reset();
+        app.toast(t('vigil.joinOk'));
+        app.announce(t('vigil.joinOk'));
+        await loadVigil({ fresh: true });
+        paintProfile();
+      } catch (failure) {
+        const status = failure?.status;
+        showError(
+          status === 400
+            ? t('vigil.nameError')
+            : status === 429
+              ? t('vigil.rateLimited')
+              : t('vigil.joinFail'),
+        );
+      } finally {
+        submitting = false;
+        submit.disabled = false;
+        submit.textContent = t('vigil.submit');
+      }
+    });
+
+    joinHost.append(form);
+  }
+
+  /* --- wall --------------------------------------------------------------- */
+
   function paintWall() {
     wallHost.replaceChildren();
     if (!vigil) {
-      wallHost.append(el('p', { class: 'empty' }, t('common.loading')));
+      wallHost.append(el('p', { class: 'empty' }, vigilError ? t('common.readError') : t('common.loading')));
       return;
     }
     const entries = vigil.wall.slice(0, 24);
@@ -94,39 +231,73 @@ export async function render(host, app) {
       wallHost.append(el('p', { class: 'empty' }, t('vigil.wallEmpty')));
       return;
     }
+    const mine = readVigil();
     const list = el('div', { class: 'wall' });
     for (const entry of entries) {
       const name = String(entry.name ?? '');
-      const place = [flag(entry.country), entry.city].filter(Boolean).join(' ');
-      const amens = Number(vigil.amens?.[entry.n] ?? 0);
+      const place = flag(entry.country);
+      const amens = Number(vigil.amens?.[entry.id] ?? 0);
+      const button = el(
+        'button',
+        {
+          type: 'button',
+          class: 'wall-amen',
+          'aria-label': t('vigil.amenAria', { name }),
+          onclick: () => void sendAmen(entry.id, button),
+        },
+        icon('flame', { size: 12 }),
+        el('span', { class: 'wall-amen-count' }, amens > 0 ? formatNumber(amens, locale) : ''),
+      );
+      if (pendingAmen.has(entry.id)) button.disabled = true;
       list.append(
         el(
           'div',
-          { class: 'wall-item' },
-          el('span', { class: 'wall-n' }, `#${formatNumber(entry.n, locale)}`),
-          el('span', { class: 'wall-name' }, name),
-          el('span', { class: 'wall-place' }, place),
-          el('span', { class: 'wall-age' }, relativeTime(entry.at, Date.now(), locale)),
+          { class: 'wall-item', dataset: { self: String(Boolean(mine.id) && mine.id === entry.id) } },
+          el('span', { class: 'wall-name' }, name, place ? el('span', { class: 'wall-place' }, place) : null),
           el(
             'span',
-            { class: 'wall-amen', role: 'img', 'aria-label': t('vigil.amenAria', { n: entry.n }) },
-            icon('flame', { size: 12 }),
-            amens > 0 ? formatNumber(amens, locale) : '',
+            { class: 'wall-days' },
+            Number(entry.days) > 0 ? t('vigil.daysWaited', { n: formatNumber(entry.days, locale) }) : t('vigil.joinedAt', { time: relativeTime(entry.at, Date.now(), locale) }),
           ),
+          el('span', { class: 'wall-age' }, relativeTime(entry.at, Date.now(), locale)),
+          button,
         ),
       );
     }
     wallHost.append(list);
     if (vigil.believers > entries.length) {
-      wallHost.append(el('p', { class: 'field-hint', style: 'margin-top:12px' }, t('vigil.wallMore', { count: formatNumber(vigil.believers - entries.length, locale) })));
+      wallHost.append(
+        el('p', { class: 'field-hint', style: 'margin-top:12px' }, t('vigil.wallMore', { count: formatNumber(vigil.believers - entries.length, locale) })),
+      );
     }
   }
+
+  async function sendAmen(id, button) {
+    if (!id || pendingAmen.has(id)) return;
+    pendingAmen.add(id);
+    button.disabled = true;
+    try {
+      const result = await endpoints.amen(id);
+      if (vigil) vigil.amens[id] = Number(result?.count) || (Number(vigil.amens[id]) || 0) + 1;
+      const count = button.querySelector('.wall-amen-count');
+      if (count) count.textContent = formatNumber(vigil?.amens?.[id] ?? 0, locale);
+      const mine = readVigil();
+      if (mine.id === id) writeVigil({ ...mine, amens: [...new Set([...mine.amens, id])] });
+    } catch (failure) {
+      app.toast(failure?.status === 429 ? t('vigil.rateLimited') : t('vigil.amenFail'));
+    } finally {
+      pendingAmen.delete(id);
+      button.disabled = false;
+    }
+  }
+
+  /* --- sleep clock -------------------------------------------------------- */
 
   function paintClock() {
     const timeline = state.timeline ? timelineView(state.timeline) : null;
     clockHost.replaceChildren();
     if (!timeline) {
-      clockHost.append(el('p', { class: 'empty' }, t('common.loading')));
+      clockHost.append(el('p', { class: 'empty' }, state.timelineError ? t('common.readError') : t('common.loading')));
       return;
     }
     const buckets = hourHistogram(timeline.events);
@@ -160,57 +331,60 @@ export async function render(host, app) {
         ? t('vigil.clockAsleep', { time })
         : t(hits >= peakFloor ? 'vigil.clockPrime' : 'vigil.clockAwake', { time, count: hits, total });
 
-    clockHost.append(plot, labels, verdict, el('p', { class: 'field-hint' }, `${zoneLabel(getTimeZone(), locale)} · ${t('radar.hoursNote')}`));
+    clockHost.append(plot, labels, verdict, el('p', { class: 'field-hint' }, `${zoneLabel(getTimeZone(), locale)} · ${t('vigil.sleepFooter')}`));
   }
+
+  /* --- my local record ---------------------------------------------------- */
 
   function paintProfile() {
     profileHost.replaceChildren();
-    const feedProfile = state.feed?.profile;
-    const rows = el('dl', { class: 'factgrid' });
-    rows.append(
-      fact('@thsottiaux', feedProfile ? formatNumber(feedProfile.followers, locale) : '—', t('radar.followers', { n: '' })),
-    );
-    const x = safeXUrl('https://x.com/thsottiaux');
-    const wrap = el('div', { class: 'stack' });
-    wrap.append(rows);
-    if (x) wrap.append(el('a', { class: 'btn', href: x, rel: 'noopener nofollow', target: '_blank' }, t('common.viewOnX')));
-    if (vigil) {
-      const archive = (vigil.archive ?? []).slice(0, 6);
-      if (archive.length) {
-        const list = el('div', { class: 'wall' });
-        for (const entry of archive) {
-          list.append(
-            el(
-              'div',
-              { class: 'wall-item' },
-              el('span', { class: 'wall-n' }, formatDay(entry.answered_at, locale) ?? '—'),
-              el('span', { class: 'wall-name' }, t('radar.kind.reset')),
-              el('span', { class: 'wall-place' }, formatNumber(entry.believers ?? entry.total ?? 0, locale)),
-              el('span'),
-              el('span'),
-            ),
-          );
-        }
-        wrap.append(list);
-      }
+    const mine = readVigil();
+    if (!mine.name) {
+      profileHost.append(el('p', { class: 'empty' }, t('vigil.profileEmpty')));
+    } else {
+      const rows = el('dl', { class: 'factgrid' });
+      const push = (term, value) => rows.append(el('div', { class: 'fact' }, el('dt', {}, term), el('dd', {}, value)));
+      push(t('vigil.name'), mine.name);
+      if (mine.days > 0) push(t('vigil.profileDays'), t('common.days', { n: formatNumber(mine.days, locale) }));
+      if (mine.at) push(t('vigil.profileJoined'), formatDay(mine.at, locale) ?? '—');
+      if (mine.epochId) push(t('vigil.profileEpoch'), mine.epochId);
+      profileHost.append(rows);
     }
-    profileHost.append(wrap);
+
+    const archive = (vigil?.archive ?? []).slice(0, 6);
+    if (archive.length) {
+      const list = el('ul', { class: 'archive-list' });
+      for (const entry of archive) {
+        list.append(
+          el(
+            'li',
+            {},
+            el('span', { class: 'archive-date' }, formatDay(entry.endedAt, locale) ?? '—'),
+            el('span', { class: 'archive-count' }, t('vigil.archiveCount', { n: formatNumber(entry.count, locale) })),
+          ),
+        );
+      }
+      profileHost.append(el('h3', { class: 'subhead' }, t('vigil.archive')), list);
+    }
   }
 
-  async function loadVigil() {
+  /* --- lifecycle ---------------------------------------------------------- */
+
+  async function loadVigil({ fresh = false } = {}) {
     try {
-      vigil = vigilView(await endpoints.vigil({ locale }));
+      vigil = vigilView(await endpoints.vigil({ locale, fresh }));
       vigilError = null;
     } catch (error) {
       vigilError = error;
       vigil = null;
     }
     paintCount();
+    paintJoin();
     paintWall();
-    paintProfile();
   }
 
   paintCount();
+  paintJoin();
   paintWall();
   paintClock();
   paintProfile();
@@ -219,22 +393,19 @@ export async function render(host, app) {
 
   const unsubscribe = subscribe((slice) => {
     if (slice === 'timeline') paintClock();
-    if (slice === 'status') paintProfile();
   });
-  cleanups.push(unsubscribe, subscribeTimeZone(() => { paintCount(); paintClock(); paintProfile(); }));
+  cleanups.push(unsubscribe);
+  cleanups.push(subscribeTimeZone(() => {
+    paintCount();
+    paintClock();
+  }));
 
   const timer = setInterval(() => {
-    if (!document.hidden) void loadVigil();
+    if (!document.hidden) void loadVigil({ fresh: true });
   }, REFRESH_MS);
   cleanups.push(() => clearInterval(timer));
 
   return () => {
     for (const cleanup of cleanups) cleanup?.();
   };
-}
-
-function fact(term, value, sub) {
-  const node = el('div', { class: 'fact' }, el('dt', {}, term), el('dd', {}, value));
-  if (sub) node.append(el('p', {}, sub));
-  return node;
 }

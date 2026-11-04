@@ -8,19 +8,20 @@ import { detectLocale, LOCALE_LABEL, locales, normalizeLocale, translator } from
 import { formatClock, formatDateTime } from './format.js';
 import { getState, setLocale, startStore, subscribe } from './store.js';
 import { alertsStatus, announceReset, disableAlerts, enableAlerts, markSeen, sendTest } from './notify.js';
-import { statusView } from './model.js';
+import { dataStatusView } from './model.js';
 import { getTimeZone, getTimeZonePreference, localTimeZone, setTimeZone, subscribeTimeZone, zoneLabel, zoneShort } from './time-zone.js';
 import { applyPageSeo, localizeLinks } from './seo.js';
 import { pathFor, resolvePath } from './seo-meta.js';
 
 /**
- * Overview and reset history are the primary routes. Service status and
- * the community waiting page remain reachable from the footer.
+ * Overview, reset rhythm and reset history are the primary routes. Data status
+ * and the community waiting page remain reachable from the footer.
  */
 const ROUTES = [
   { path: '/', key: 'home', label: 'nav.home', title: 'app.tagline', inNav: true },
+  { path: '/rhythm', key: 'rhythm', label: 'nav.rhythm', title: 'rhythm.h1', inNav: true },
   { path: '/timeline', key: 'timeline', label: 'nav.timeline', title: 'timeline.h1', inNav: true },
-  { path: '/status', key: 'status', label: 'nav.status', title: 'status.h1', inNav: false },
+  { path: '/status', key: 'status', label: 'nav.status', title: 'datastatus.h1', inNav: false },
   { path: '/vigil', key: 'vigil', label: 'nav.vigil', title: 'vigil.h1', inNav: false },
 ];
 
@@ -250,20 +251,30 @@ function applyLocale(next) {
   renderUpdated();
 }
 
+/**
+ * The chip is the site's own data state, not a third-party service state:
+ * fresh or stale, from the ledger's freshness block.
+ */
 function renderStatusChip() {
   const chip = $('#status-chip');
-  const view = statusView(app.state.status);
+  const view = dataStatusView(app.state.status);
   if (!chip) return;
   if (!view) {
     chip.dataset.tone = 'dim';
-    text(chip.querySelector('.status-chip-text'), app.t('common.unavailable'));
+    text(chip.querySelector('.status-chip-text'), app.t('chip.unknown'));
     chip.setAttribute('title', app.t('common.readError'));
+    chip.setAttribute('aria-label', app.t('chip.unknown'));
     return;
   }
-  chip.dataset.tone = view.tone;
-  const label = app.t(`state.${view.codex ?? 'unknown'}`) || view.codex;
-  text(chip.querySelector('.status-chip-text'), label === `state.${view.codex}` ? app.t('state.unknown') : label);
-  chip.setAttribute('title', view.incident?.name ?? view.description ?? '');
+  const level = view.freshness.level;
+  chip.dataset.tone = level === 'fresh' ? 'ok' : level === 'stale' ? 'warn' : 'dim';
+  text(chip.querySelector('.status-chip-text'), app.t(`chip.${level}`));
+  const updated = view.updatedAt ? formatDateTime(view.updatedAt, app.locale) : null;
+  const label = updated
+    ? app.t('chip.title', { level: app.t(`chip.${level}`), time: updated })
+    : app.t('chip.titleBare', { level: app.t(`chip.${level}`) });
+  chip.setAttribute('title', label);
+  chip.setAttribute('aria-label', label);
 }
 
 /* -------------------------------------------------------- the masthead clock */

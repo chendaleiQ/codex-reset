@@ -1,8 +1,8 @@
 {
   "name": "codex-reset",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Codex 重置 — 已验证重置记录与 24–48 小时预测。功能对照公开站点重建，界面与交互重新设计。",
+  "description": "Codex 重置 — 自持台账的重置记录与 24–48 小时历史节奏预测。运行时零第三方接口，模型与数据都在仓库里。",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

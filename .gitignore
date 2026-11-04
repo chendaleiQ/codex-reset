@@ -8,3 +8,4 @@ node_modules/
 .seo/
 # 本地部署地址（含服务器 IP），不要提交
 deploy/.env.local
+state/

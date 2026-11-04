@@ -11,10 +11,12 @@ const { setTimeout: delay } = require('node:timers/promises');
 
 const PAGE_ROUTES = [
   '/',
+  '/rhythm',
   '/timeline',
   '/status',
   '/vigil',
   '/en/',
+  '/en/rhythm',
   '/en/timeline',
   '/plan',
   '/en/plan',
@@ -59,8 +61,13 @@ async function verifyDeployment(manifest, base = 'https://codex-reset.opentunnel
   assert.match(sitemap.headers.get('content-type') || '', /xml/);
   assert.match(await sitemap.text(), /<urlset/);
 
-  const feed = await (await get('/api/feed?locale=zh')).json();
-  assert.ok(Array.isArray(feed.tweets) && feed.tweets.length > 0, 'Public feed has no records');
+  // The release must be serving its own dataset, not an upstream that happens
+  // to be up: the event count is checked, not just the HTTP status.
+  const timeline = await (await get('/api/timeline')).json();
+  assert.ok(Array.isArray(timeline.events) && timeline.events.length > 50, 'Public timeline has no records');
+  const forecast = await (await get('/api/forecast')).json();
+  assert.ok(Number.isFinite(forecast.probabilities?.rounded_24h), 'Public forecast has no probability');
+  assert.ok(forecast.model?.interval_sample > 0, 'Public forecast has no model sample');
   return health.release;
 }
 
@@ -75,7 +82,7 @@ if (require.main === module) {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         const release = await verifyDeployment(manifest, process.env.PUBLIC_URL);
-        console.log(`PASS: public TLS release ${release.id}; commit ${release.commit}; static assets, rendered pages, sitemap and feed`);
+        console.log(`PASS: public TLS release ${release.id}; commit ${release.commit}; static assets, rendered pages, sitemap, timeline and forecast`);
         return;
       } catch (error) {
         if (attempt === 3) throw error;

@@ -11,15 +11,19 @@
 
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
 const ROUTES = [
   ['/', 'zh-Hans', '/'],
   ['/timeline', 'zh-Hans', '/timeline'],
+  ['/rhythm', 'zh-Hans', '/rhythm'],
   ['/status', 'zh-Hans', '/status'],
   ['/vigil', 'zh-Hans', '/vigil'],
   ['/en/', 'en', '/en/'],
   ['/en/timeline', 'en', '/en/timeline'],
+  ['/en/rhythm', 'en', '/en/rhythm'],
   ['/en/status', 'en', '/en/status'],
   ['/en/vigil', 'en', '/en/vigil'],
   ['/guide/codex-reset', 'zh-Hans', '/guide/codex-reset'],
@@ -39,9 +43,11 @@ const ROUTES = [
   ['/en/archive', 'en', '/en/archive'],
 ];
 
+const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-reset-seo-'));
 const server = spawn(process.execPath, ['server.js', '--port', '0'], {
   cwd: path.resolve(__dirname, '..'),
   stdio: ['ignore', 'pipe', 'inherit'],
+  env: { ...process.env, STATE_DIR: stateDir, http_proxy: '', https_proxy: '', HTTP_PROXY: '', HTTPS_PROXY: '', ALL_PROXY: '', all_proxy: '' },
 });
 
 function start() {
@@ -68,19 +74,19 @@ function attr(html, pattern) {
   return match ? match[1] : null;
 }
 
+/**
+ * The snapshot is the release's own dataset, so there is nothing to wait for —
+ * if it is missing the checks below fail on content, which is the honest result.
+ */
 async function waitForSnapshot(base) {
-  for (let attempt = 0; attempt < 30; attempt += 1) {
-    const health = await fetch(`${base}/__health`).then((response) => response.json()).catch(() => null);
-    if (health?.seo?.at) return health.seo;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  return null;
+  const health = await fetch(`${base}/__health`).then((response) => response.json()).catch(() => null);
+  return health?.dataset?.events ? health.dataset : null;
 }
 
 async function main() {
   const base = await start();
   const snapshot = await waitForSnapshot(base);
-  assert.ok(snapshot, 'upstream snapshot must load for the rendered-text checks');
+  assert.ok(snapshot, 'the release dataset must load for the rendered-text checks');
   const titles = new Map();
 
   for (const [route, lang, canonicalPath] of ROUTES) {
@@ -123,7 +129,21 @@ async function main() {
     // A shell with no JavaScript renders to a few dozen characters; anything
     // past 300 means the page really carries its own copy.
     assert.ok(body.replace(/<[^>]+>/g, '').trim().length > 300, `${route}: rendered text`);
+    assert.ok(!/codex-reset\.com|status\.openai\.com|上游数据/.test(html), `${route}: no upstream reference`);
   }
+
+  // The new surfaces carry their own content, not just a heading.
+  const home = await fetch(`${base}/`).then((response) => response.text());
+  assert.match(home, /class="verdict/, 'home: verdict block');
+  assert.match(home, /data-confidence=/, 'home: confidence label on the number');
+  const rhythm = await fetch(`${base}/rhythm`).then((response) => response.text());
+  assert.ok(count(rhythm, 'heatmap-cell') >= 168, 'rhythm: 7 x 24 heatmap');
+  assert.match(rhythm, /Brier|回测/, 'rhythm: method block');
+  const plan = await fetch(`${base}/plan`).then((response) => response.text());
+  assert.match(plan, /已结束/, 'plan: closed state');
+  const statusPage = await fetch(`${base}/status`).then((response) => response.text());
+  assert.match(statusPage, /数据状态|新鲜/, 'status: data status');
+  assert.ok(!/OpenAI Status|服务状态/.test(statusPage), 'status: no OpenAI status claim');
 
   // English pages must not ship Chinese chrome.
   const en = await fetch(`${base}/en/`).then((response) => response.text());
@@ -170,8 +190,8 @@ async function main() {
   const missingBody = await missing.text();
   assert.match(missingBody, /name="robots" content="noindex/);
   assert.equal((await fetch(`${base}/en/no-such-page`)).status, 404);
-  assert.equal((await fetch(`${base}/api/feed`, { headers: { accept: 'application/json' } })).status === 200, true);
-  const apiHeaders = await fetch(`${base}/api/feed`);
+  assert.equal((await fetch(`${base}/api/timeline`, { headers: { accept: 'application/json' } })).status, 200);
+  const apiHeaders = await fetch(`${base}/api/timeline`);
   assert.equal(apiHeaders.headers.get('x-robots-tag'), 'noindex', 'api: noindex header');
 
   // One canonical spelling per URL.
@@ -189,4 +209,7 @@ main()
     console.error(error);
     process.exitCode = 1;
   })
-  .finally(() => server.kill());
+  .finally(() => {
+    server.kill();
+    fs.rmSync(stateDir, { recursive: true, force: true });
+  });

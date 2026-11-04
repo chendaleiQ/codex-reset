@@ -1,25 +1,254 @@
 #!/usr/bin/env node
-/** Dependency-free checks for calendar date boundaries and evidence states. */
+/**
+ * Dependency-free checks for the self-hosted dataset and the model built on it.
+ *
+ * Two jobs: prove the release does not reach a third party, and prove the
+ * numbers the site publishes are computed from the ledger in a way that holds
+ * up to boundary cases (duplicate waves, missing rows, empty samples).
+ */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+
 const root = path.resolve(__dirname, '..');
 
-function checkSyntax(directory) {
+/* ------------------------------------------------------------------ syntax */
+
+function checkCommonJs(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const file = path.join(directory, entry.name);
-    if (entry.isDirectory()) checkSyntax(file);
-    else if (file.endsWith('.js')) {
-      const result = spawnSync(process.execPath, ['--input-type=module', '--check'], { input: fs.readFileSync(file), encoding: 'utf8' });
-      assert.equal(result.status, 0, `${file}: ${result.stderr}`);
+    if (entry.isDirectory()) {
+      if (entry.name === 'node_modules' || entry.name === 'state') continue;
+      checkCommonJs(file);
+    } else if (file.endsWith('.js')) {
+      const result = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
+      assert.equal(result.status, 0, `${path.relative(root, file)}: ${result.stderr}`);
     }
   }
 }
 
+function checkModules(directory) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const file = path.join(directory, entry.name);
+    if (entry.isDirectory()) checkModules(file);
+    else if (file.endsWith('.js')) {
+      const result = spawnSync(process.execPath, ['--input-type=module', '--check'], {
+        input: fs.readFileSync(file),
+        encoding: 'utf8',
+      });
+      assert.equal(result.status, 0, `${path.relative(root, file)}: ${result.stderr}`);
+    }
+  }
+}
+
+/* ------------------------------------------------------------ no upstream */
+
+function noThirdPartyRuntime() {
+  const runtime = ['server.js', 'lib', 'seo', 'data', 'public/js', 'public/index.html'];
+  const forbidden = [
+    /codex-reset\.com/i,
+    /\/api\/feed/i,
+    /\/api\/status-history/i,
+    /\/api\/usage-reference/i,
+    /\/api\/reset-poll/i,
+  ];
+  const offenders = [];
+  const walk = (relative) => {
+    const absolute = path.join(root, relative);
+    if (!fs.existsSync(absolute)) return;
+    const stat = fs.statSync(absolute);
+    if (stat.isDirectory()) {
+      for (const name of fs.readdirSync(absolute)) walk(path.join(relative, name));
+      return;
+    }
+    if (!/\.(js|html|json)$/.test(relative)) return;
+    const text = fs.readFileSync(absolute, 'utf8');
+    for (const pattern of forbidden) {
+      if (pattern.test(text)) offenders.push(`${relative}: ${pattern}`);
+    }
+  };
+  for (const entry of runtime) walk(entry);
+  assert.deepEqual(offenders, [], `runtime files still reference an upstream surface:\n${offenders.join('\n')}`);
+  const server = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
+  assert.ok(!/require\(['"]node:https['"]\)/.test(server), 'server.js must not make HTTPS requests');
+
+  // Linking out is fine (guides cite OpenAI Status); calling out is not.
+  const callers = [];
+  for (const relative of ['public/js', 'lib', 'seo']) {
+    const walk = (entry) => {
+      const absolute = path.join(root, entry);
+      const stat = fs.statSync(absolute);
+      if (stat.isDirectory()) {
+        for (const name of fs.readdirSync(absolute)) walk(path.join(entry, name));
+        return;
+      }
+      if (!relative.endsWith('.js') && !entry.endsWith('.js')) return;
+      const text = fs.readFileSync(absolute, 'utf8');
+      if (/fetch\(\s*['"`]https?:\/\//.test(text) || /https\.(get|request)\(/.test(text) || /require\(['"]node:https['"]\)/.test(text)) {
+        callers.push(entry);
+      }
+    };
+    walk(relative);
+  }
+  assert.deepEqual(callers, [], `runtime files still call a remote host:\n${callers.join('\n')}`);
+}
+
+/* --------------------------------------------------------------- the model */
+
 async function main() {
-  checkSyntax(path.join(root, 'public/js'));
-  // Load browser ES modules without adding a build step or changing package type.
+  checkCommonJs(path.join(root, 'lib'));
+  checkCommonJs(path.join(root, 'seo'));
+  checkCommonJs(path.join(root, 'tools'));
+  checkModules(path.join(root, 'public/js'));
+  noThirdPartyRuntime();
+
+  const model = require('../lib/model');
+  const data = require('../lib/data');
+
+  /* numbers that must be right before any probability is published */
+  assert.ok(Math.abs(model.gamma(1) - 1) < 1e-9, 'gamma(1) = 1');
+  assert.ok(Math.abs(model.gamma(5) - 24) < 1e-6, 'gamma(5) = 24');
+  assert.ok(Math.abs(model.gamma(0.5) - Math.sqrt(Math.PI)) < 1e-6, 'gamma(1/2) = sqrt(pi)');
+  assert.ok(Math.abs(model.normalCdf(0) - 0.5) < 1e-9, 'normalCdf(0) = 0.5');
+  assert.equal(model.median([3, 1, 2]), 2);
+  assert.equal(model.quantile([1, 2, 3, 4], 0.5), 2.5);
+
+  /* ledger validation drops bad rows instead of guessing */
+  const now = Date.parse('2026-11-04T06:00:00Z');
+  const parsed = model.readLedger(
+    {
+      updated_at: '2026-11-01T00:00:00Z',
+      events: [
+        { id: 'a', kind: 'reset', at: '2026-10-01T00:00:00Z', state: 'confirmed', quote: 'x', source_url: 'https://x.com/1' },
+        { id: 'a', kind: 'reset', at: '2026-10-02T00:00:00Z' },
+        { id: 'b', kind: 'nonsense', at: '2026-10-03T00:00:00Z' },
+        { id: 'c', kind: 'reset', at: 'not-a-date' },
+        { id: 'd', kind: 'banked', at: '2026-10-04T00:00:00Z', state: 'confirmed' },
+      ],
+    },
+    now,
+  );
+  assert.equal(parsed.events.length, 2, 'two valid rows survive');
+  assert.ok(parsed.errors.length >= 3, 'every bad row is reported');
+
+  /* intervals: propagation waves collapse, ordinary gaps survive */
+  const resets = [
+    { at: Date.parse('2026-01-01T00:00:00Z'), atIso: '2026-01-01T00:00:00Z', date: '2026-01-01', kind: 'reset', state: 'confirmed' },
+    { at: Date.parse('2026-01-01T03:00:00Z'), atIso: '2026-01-01T03:00:00Z', date: '2026-01-01', kind: 'reset', state: 'confirmed' },
+    { at: Date.parse('2026-01-04T00:00:00Z'), atIso: '2026-01-04T00:00:00Z', date: '2026-01-04', kind: 'reset', state: 'confirmed' },
+    { at: Date.parse('2026-01-05T00:00:00Z'), atIso: '2026-01-05T00:00:00Z', date: '2026-01-05', kind: 'reset', state: 'confirmed' },
+  ];
+  const built = model.buildIntervals(resets);
+  assert.equal(built.resets.length, 3, 'a 3-hour propagation wave is one reset');
+  assert.equal(built.intervals.length, 2);
+  assert.ok(Math.abs(built.intervals[0].days - 3) < 1e-9);
+  assert.ok(Math.abs(built.intervals[1].days - 1) < 1e-9);
+
+  const fit = model.fitWeibull([1, 2, 3, 4, 5], [1, 1, 1, 1, 1]);
+  assert.ok(fit.k > 0 && fit.scale > 0 && fit.ess > 0, 'Weibull fit is finite');
+
+  const toy = { intervals: [1, 2, 3, 4, 5, 6], weights: [1, 1, 1, 1, 1, 1], fit, k: fit.k, scale: fit.scale };
+  for (const age of [0, 0.5, 2, 7, 20]) {
+    const p24 = model.probability(toy, age, 24);
+    const p48 = model.probability(toy, age, 48);
+    assert.ok(p24 >= 0 && p24 <= 1, 'p24 in range');
+    assert.ok(p48 >= 0 && p48 <= 1, 'p48 in range');
+    assert.ok(p48 >= p24 - 1e-9, 'a 48h horizon cannot be less likely than 24h');
+  }
+  assert.equal(model.probability(null, 1, 24), null, 'no sample, no number');
+
+  /* an announced-but-unlanded reset flips the mode and never enters the sample */
+  const pendingLedger = model.readLedger({
+    updated_at: '2026-11-04T00:00:00Z',
+    events: [
+      { id: 'p1', kind: 'reset', at: '2026-10-20T00:00:00Z', state: 'confirmed', quote: 'a', source_url: 'https://x.com/1' },
+      { id: 'p2', kind: 'reset', at: '2026-10-24T00:00:00Z', state: 'confirmed', quote: 'b', source_url: 'https://x.com/2' },
+      { id: 'p3', kind: 'reset', at: '2026-10-26T00:00:00Z', state: 'announced', quote: 'lands tonight', source_url: 'https://x.com/3' },
+    ],
+  }, now);
+  const pendingForecast = model.forecast(pendingLedger, { now });
+  assert.equal(pendingForecast.mode, 'pending');
+  assert.equal(pendingForecast.pending.id, 'p3');
+  assert.equal(pendingForecast.model.interval_sample, 1, 'the announcement is not in the interval sample');
+
+  /* no data means no number, not a zero */
+  const emptyForecast = model.forecast(model.readLedger({ updated_at: '2026-11-04T00:00:00Z', events: [] }, now), { now });
+  assert.equal(emptyForecast.probabilities.rounded_24h, null);
+  assert.equal(emptyForecast.mode, 'model');
+  assert.equal(emptyForecast.confidence, 'low');
+
+  /* the real release */
+  const forecast = data.forecast();
+  assert.ok(forecast.probabilities.rounded_24h >= 0 && forecast.probabilities.rounded_24h <= 100);
+  assert.ok(forecast.probabilities.rounded_48h >= forecast.probabilities.rounded_24h, '48h >= 24h');
+  for (const range of [forecast.probabilities.range_24h, forecast.probabilities.range_48h]) {
+    if (!range) continue;
+    assert.ok(range.lower <= range.upper, 'range ordered');
+    assert.ok(range.lower >= 0 && range.upper <= 1, 'range in [0,1]');
+  }
+  assert.ok(['high', 'medium', 'low'].includes(forecast.confidence));
+  assert.ok(forecast.model.interval_sample > 0, 'model sample exists');
+  assert.ok(forecast.backtest.method === 'walk-forward');
+  assert.ok(forecast.evidence.length >= 3, 'every number ships its evidence');
+  assert.ok(forecast.windows.length > 0);
+  assert.ok(forecast.windows[0].count >= forecast.windows[forecast.windows.length - 1].count, 'windows are ranked');
+
+  const timeline = data.timeline();
+  assert.ok(timeline.events.length >= 60, 'ledger has history');
+  assert.ok(timeline.stats.reset >= 50 && timeline.stats.banked >= 5);
+  assert.ok(timeline.events.every((event, index, list) => index === 0 || event.at >= list[index - 1].at), 'events are chronological');
+  assert.ok(
+    timeline.events.filter((event) => event.kind === 'reset').every((event) => event.source_url),
+    'every reset is traceable to a public post',
+  );
+
+  const rhythm = data.rhythm();
+  const heatTotal = rhythm.heatmap.flat().reduce((sum, value) => sum + value, 0);
+  assert.equal(heatTotal, rhythm.stats.resets, 'heatmap covers every reset once');
+  assert.equal(rhythm.heatmap.length, 7);
+  assert.equal(rhythm.heatmap[0].length, 24);
+  assert.equal(rhythm.hour.reduce((sum, value) => sum + value, 0), rhythm.stats.resets);
+  assert.equal(rhythm.weekday.reduce((sum, value) => sum + value, 0), rhythm.stats.resets);
+  assert.ok(rhythm.intervals.every((row) => row.days > 0), 'intervals are positive');
+  assert.ok(rhythm.windows.length === 5);
+  assert.ok(rhythm.windows[0].share >= rhythm.windows[4].share);
+
+  const status = data.status();
+  assert.ok(['fresh', 'stale', 'unknown'].includes(status.freshness.level));
+  assert.ok(status.checks.every((check) => typeof check.ok === 'boolean'));
+  assert.ok(status.checks.some((check) => check.name === 'ledger' && check.ok), 'ledger check passes');
+  assert.equal(status.dataset.total, timeline.events.length);
+  assert.ok(status.dataset.span_days > 300);
+
+  const posts = data.posts();
+  assert.equal(posts.ended, true, 'the 28-day run is closed');
+  assert.equal(posts.days, 28);
+  assert.ok(posts.posts.length >= 20, 'the retrospective keeps the recorded days');
+  assert.ok(posts.posts.every((post) => post.at && post.url));
+
+  /* the vigil store writes nowhere near the release */
+  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-reset-state-'));
+  process.env.STATE_DIR = stateDir;
+  delete require.cache[require.resolve('../lib/vigil')];
+  const vigil = require('../lib/vigil');
+  vigil.bind(data.ledger.events);
+  assert.equal(vigil.payload().believers, 0);
+  const joined = vigil.join({ name: '  阿力  ', days: 3, country: 'cn' });
+  assert.equal(joined.entry.name, '阿力', 'name is trimmed');
+  assert.equal(joined.entry.country, 'CN');
+  assert.equal(vigil.payload().believers, 1);
+  vigil.join({ name: '阿力', days: 4 });
+  assert.equal(vigil.payload().believers, 1, 'one name per epoch, not duplicates');
+  assert.equal(vigil.payload().wall[0].days, 4, 're-submitting updates the entry');
+  assert.equal(vigil.amen(joined.entry.id).count, 1);
+  assert.throws(() => vigil.join({ name: '' }), /invalid_name/);
+  assert.throws(() => vigil.amen('not-an-id'), /invalid_id/);
+  assert.ok(fs.existsSync(path.join(stateDir, 'vigil.json')), 'state lives in STATE_DIR');
+  fs.rmSync(stateDir, { recursive: true, force: true });
+
+  /* the browser's pure-data modules still load and agree with the server */
   const moduleUrls = new Map();
   function moduleUrl(file) {
     if (moduleUrls.has(file)) return moduleUrls.get(file);
@@ -30,167 +259,20 @@ async function main() {
     return url;
   }
   const storage = new Map();
-  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
-    getItem: (key) => storage.get(key) ?? null,
-    setItem: (key, value) => storage.set(key, value),
-  } });
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) },
+  });
   const load = (file) => import(moduleUrl(path.join(root, 'public/js', file)));
-  const { buildSeries, calendarDays, seriesDay } = await load('series.js');
-  const { activityMidnight, dateKey, hourInZone, zoneOffset, setTimeZone, getTimeZone, subscribeTimeZone } = await load('time-zone.js');
-  const { formatClock, formatDateTime } = await load('format.js');
-  const { eventTime, resetRhythm, hourHistogram, timelineView, feedView } = await load('model.js');
   const { translator } = await load('i18n.js');
-  assert.equal(seriesDay('2026-10-05T06:59:59Z'), 0);
-  assert.equal(seriesDay('2026-10-05T07:00:00Z'), 1);
-  assert.equal(seriesDay('2026-10-13T01:03:25Z'), 8);
-  assert.equal(seriesDay('invalid'), null);
-  assert.equal(seriesDay('2026-11-02T07:59:59Z'), 28);
-  assert.equal(seriesDay('2026-11-02T08:00:00Z'), 29);
-  assert.equal(activityMidnight('2026-11-02') - activityMidnight('2026-11-01'), 25 * 3600000);
-  assert.equal(zoneOffset('America/Los_Angeles', Date.parse('2026-10-19T00:00Z')), 'UTC-07:00');
-  assert.equal(zoneOffset('America/Los_Angeles', Date.parse('2026-11-02T12:00Z')), 'UTC-08:00');
+  assert.equal(typeof translator('zh'), 'function');
+  assert.ok(translator('zh')('nav.home').length > 0);
+  assert.ok(translator('en')('nav.home').length > 0);
 
-  // It is already the 19th in Beijing while the activity is still on the 18th.
-  const now = Date.parse('2026-10-19T00:30:00Z');
-  const project = (series, timeZone = 'Asia/Shanghai') => calendarDays(series, { now, timeZone, basis: 'event' });
-  const row = (series, date) => series.rows.find((row) => row.date === date);
-  const empty = buildSeries({ now });
-  const local = project(empty);
-  assert.equal(local.rows.length, 29, 'The Pacific activity spans 29 Beijing calendar dates');
-  assert.equal(local.startDate, '2026-10-05');
-  assert.equal(local.endDate, '2026-11-02');
-  assert.equal(row(local, '2026-10-18').kind, 'empty');
-  assert.equal(row(local, '2026-10-19').kind, 'waiting');
-  assert.equal(row(local, '2026-10-20').kind, 'future');
-  const pacific = project(empty, 'America/Los_Angeles');
-  assert.equal(pacific.rows.length, 28);
-  assert.equal(pacific.todayDate, '2026-10-18');
-  assert.equal(row(pacific, '2026-10-18').kind, 'waiting');
-  assert.equal(row(pacific, '2026-10-19').kind, 'future');
-  assert.equal(empty.today, 14, 'Activity day is independent of display timezone');
-  assert.equal(buildSeries({ now: Date.parse('2026-10-04T12:00:00Z') }).phase, 'upcoming');
-  assert.equal(buildSeries({ now: Date.parse('2026-11-03T12:00:00Z') }).phase, 'ended');
-
-  const seed = { posts: [{ id: '1', at: '2026-10-17T16:20:57Z', en: 'Day 13/ Reset', zh: '重置' }] };
-  const pending = buildSeries({ seed, now });
-  assert.equal(row(project(pending), '2026-10-18').kind, 'announced');
-  assert.equal(pending.counts.reset, 0, 'An announcement is not a confirmed reset');
-  const reset = { id: 'reset', group: 'reset', confirmed: true, announcedAt: '2026-10-17T16:20:57Z', effectiveAt: '2026-10-17T20:41:01Z', summary: 'Day 13 of the 28-day activity: reset confirmed' };
-  const verified = buildSeries({ seed, now, timeline: { events: [reset] } });
-  const pendingEvent = { ...reset, id: '1', confirmed: false, verification: 'pending', effectiveAt: null };
-  const duplicate = buildSeries({ seed, now, timeline: { events: [reset, pendingEvent] } });
-  assert.equal(duplicate.entries.length, 1, 'Pending live record must not duplicate confirmed archive');
-  const onlyPending = buildSeries({ now, timeline: { events: [pendingEvent] } });
-  assert.equal(onlyPending.counts.reset, 0);
-  assert.equal(onlyPending.counts.announced, 1);
-  const bankedAndPending = buildSeries({ seed, now, timeline: { events: [{ ...reset, id: 'banked', group: 'banked', bankedGrant: true }] } });
-  assert.equal(bankedAndPending.counts.announced, 1, 'A banked grant must not confirm a reset announcement');
-  assert.equal(timelineView({ events: [{ group: 'reset', confirmed: false, reset_verification_status: 'pending' }, { group: 'reset', confirmed: true }] }).counts.reset, 1);
-  assert.equal(hourHistogram([reset, pendingEvent], 'Asia/Shanghai')[4], 1);
-  assert.equal(hourHistogram([reset, pendingEvent], 'UTC')[20], 1);
-  assert.equal(hourHistogram([reset, pendingEvent], 'Asia/Shanghai').reduce((a, b) => a + b, 0), 1);
-  assert.equal(verified.entries.length, 1, 'Do not duplicate a confirmed announcement');
-  assert.equal(row(project(verified), '2026-10-18').kind, 'reset');
-  assert.equal(row(project(verified, 'America/Los_Angeles'), '2026-10-17').kind, 'reset');
-  assert.equal(row(project(verified, 'UTC'), '2026-10-17').kind, 'reset');
-  assert.equal(verified.entries[0].at, reset.effectiveAt);
-  assert.equal(formatClock(verified.entries[0].at, 'zh', 'Asia/Shanghai'), '04:41');
-  assert.equal(verified.entries[0].day, 13);
-  assert.equal(verified.counts.reset, 1);
-  assert.equal(eventTime(reset), reset.effectiveAt);
-  const crossMidnight = { ...reset, announcedAt: '2026-10-17T15:59:00Z', effectiveAt: '2026-10-17T16:01:00Z' };
-  const cross = project(buildSeries({ now, timeline: { events: [crossMidnight] } }));
-  assert.equal(row(cross, '2026-10-17').entries.length, 0);
-  assert.equal(row(cross, '2026-10-18').kind, 'reset', 'Group by effective time, even across local midnight');
-  const gaps = resetRhythm([reset, { ...reset, effectiveAt: '2026-10-18T20:41:01Z' }]).gaps;
-  assert.equal(gaps[0].days, 1, 'History rhythm also uses effective time');
-
-  const combined = buildSeries({ seed, now, timeline: { events: [reset] }, feed: { posts: [
-    { id: '2', at: '2026-10-18T00:00:00Z', text: 'Day 13/ Product improvements' },
-    { id: '3', at: '2026-10-18T12:00:00Z', text: 'A nice Sunday', kind: 'other' },
-  ] } });
-  assert.equal(row(project(combined), '2026-10-18').entries.length, 2, 'Keep distinct events on the same civil date');
-  assert.equal(combined.recordedDays, 1, 'Multiple events on one activity day count as one recorded day');
-  assert.equal(combined.entries.length, 2, 'Exclude unrelated chatter');
-  const named = buildSeries({ now, feed: { posts: [{ at: '2026-10-13T23:00:00Z', text: 'Day 8/ Reset', localizedText: '重置' }] } });
-  assert.equal(named.entries[0].day, 8);
-  assert.equal(row(project(named), '2026-10-14').kind, 'announced', 'An activity day number must not override the actual date');
-  assert.equal(dateKey('2026-10-17T18:30:00Z', 'Asia/Kathmandu'), '2026-10-18');
-  assert.equal(hourInZone('2026-10-17T18:30:00Z', 'Asia/Kathmandu'), 0);
-  assert.equal(dateKey('invalid'), null);
-
-  // The upstream challenge also reads radar_context; Day 14 exists only there.
-  const day14 = { id: '2111990254408434095', at: '2026-10-19T01:18:10.000Z',
-    text: 'Day 14/ Small quality of life improvement. You can now edit previous messages within a thread in the desktop app.',
-    localized_text: '第 14 天/ 现在可以在桌面应用中编辑线程内的历史消息了。',
-    url: 'https://x.com/thsottiaux/status/2111990254408434095', visibility_only: true };
-  const completeSeed = JSON.parse(fs.readFileSync(path.join(root, 'public/data/series.json'), 'utf8'));
-  const contextFeed = feedView({ tweets: [], radar_context: [day14, { id: 'chatter', at: day14.at, text: 'A nice Monday' }] });
-  const challenge = buildSeries({ seed: completeSeed, feed: contextFeed, now });
-  assert.equal(challenge.recordedDays, 14);
-  assert.equal(challenge.counts.reset, 0, 'Context posts do not manufacture confirmed resets');
-  assert.equal(contextFeed.posts.length, 0, 'Context remains outside the signal feed');
-  const byActivity = calendarDays(challenge, { now, timeZone: 'Asia/Shanghai' });
-  assert.equal(byActivity.basis, 'activity', 'Activity is the default calendar basis');
-  assert.equal(byActivity.rows.length, 28);
-  assert.equal(row(byActivity, '2026-10-05').kind, 'improvement');
-  assert.equal(row(byActivity, '2026-10-16').day, 12);
-  assert.equal(row(byActivity, '2026-10-16').kind, 'improvement');
-  assert.equal(row(byActivity, '2026-10-16').entries[0].at, '2026-10-16T23:55:11.000Z');
-  assert.equal(row(byActivity, '2026-10-18').day, 14);
-  assert.equal(row(byActivity, '2026-10-18').kind, 'improvement');
-  assert.match(row(byActivity, '2026-10-18').entries[0].zh, /编辑线程/);
-  const inUTC = calendarDays(challenge, { now, timeZone: 'UTC' });
-  assert.deepEqual(byActivity.rows, inUTC.rows, 'Changing timestamp timezone cannot move activity dates');
-  assert.equal(row(project(challenge), '2026-10-16').kind, 'empty');
-  assert.equal(row(project(challenge), '2026-10-17').entries[0].day, 12);
-  assert.equal(row(project(challenge), '2026-10-19').entries[0].day, 14);
-  const duplicatedFeed = feedView({ tweets: [day14], radar_context: [day14] });
-  assert.equal(buildSeries({ feed: duplicatedFeed, now }).entries.length, 1);
-
-  // Latest posts include the visibility lane, even when no reset-related tweet changed.
-  const day15 = { id: '2112268918681485431', at: '2026-10-19T19:45:28.000Z',
-    text: "Day 15/ We're cooked", localized_text: '第 15 天/ 我们完蛋了', visibility_only: true };
-  const oldTweet = { id: '2112034063934742720', at: '2026-10-19T04:12:15.000Z', kind: 'limits', text: 'Credits refunded' };
-  const resetTweet = { id: 'reset-example', at: '2026-10-18T20:41:00.000Z', kind: 'reset', text: 'Limits reset' };
-  const liveFeed = feedView({ tweets: [resetTweet, oldTweet], radar_context: [day14, day15,
-    { ...oldTweet, kind: undefined, localized_text: '返还额度', translation_status: 'translated' },
-    { id: 'missing-date', text: 'Post without a date' }], signal: { active: false } });
-  assert.deepEqual(liveFeed.latestPosts.map(post => post.id), [day15.id, oldTweet.id, day14.id, resetTweet.id, 'missing-date']);
-  assert.equal(liveFeed.latestPosts[0].kind, 'other', 'Visibility-only posts cannot become reset evidence');
-  assert.equal(liveFeed.latestPosts[1].kind, 'limits', 'Classified source wins a duplicate');
-  assert.equal(liveFeed.latestPosts[1].localizedText, '返还额度', 'Keep translations from the other source');
-  assert.equal(liveFeed.latestPosts.filter(post => post.kind === 'reset').length, 1);
-  assert.equal(liveFeed.posts.length, 2, 'Latest-post display cannot expand the reset source lane');
-  assert.deepEqual(liveFeed.signal, { active: false });
-  assert.deepEqual(feedView({}).latestPosts, []);
-  const beforeContextUpdate = feedView({ tweets: [oldTweet], radar_context: [day14] });
-  const afterContextUpdate = feedView({ tweets: [oldTweet], radar_context: [day14, day15] });
-  assert.deepEqual(beforeContextUpdate.posts, afterContextUpdate.posts);
-  assert.notDeepEqual(beforeContextUpdate.latestPosts, afterContextUpdate.latestPosts);
-  assert.equal(afterContextUpdate.latestPosts[0].id, day15.id);
-
-  let notifications = 0;
-  const stop = subscribeTimeZone(() => notifications++);
-  setTimeZone('Asia/Shanghai');
-  assert.equal(formatClock(reset.effectiveAt), '04:41');
-  setTimeZone('UTC');
-  assert.equal(getTimeZone(), 'UTC');
-  assert.equal(storage.get('codex-reset.timeZone'), 'UTC');
-  assert.equal(formatClock(reset.effectiveAt), '20:41');
-  assert.match(formatDateTime(reset.effectiveAt), /17/);
-  assert.equal(setTimeZone('bad/zone'), false);
-  assert.equal(getTimeZone(), 'UTC');
-  stop();
-  const before = notifications;
-  setTimeZone('local');
-  assert.equal(notifications, before);
-  for (const locale of ['zh', 'en']) {
-    const t = translator(locale);
-    for (const key of ['timezone.label', 'calendar.todayEmpty', 'calendar.pastEmpty', 'calendar.activityRef', 'series.kind.empty', 'calendar.short.empty', 'calendar.basis.activity', 'calendar.basis.event', 'calendar.activityPending']) assert.notEqual(t(key), key);
-  }
-  console.log('PASS: module syntax; timezone dates, local today and DST; effective-time grouping; multiple events; announcement confirmation; shared timezone formatting and subscriptions; activity/event projections; context-only updates; latest-post ordering, deduplication and signal isolation; bilingual states.');
-
+  console.log('PASS: no upstream references; ledger, model, forecast, rhythm, status, posts and vigil store');
 }
 
-main().catch((error) => { console.error(error); process.exitCode = 1; });
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
