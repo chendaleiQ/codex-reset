@@ -430,15 +430,17 @@
 }
 
 .page-head {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--s5);
-  flex-wrap: wrap;
+  display: block;
   margin-bottom: var(--s7);
 }
 
 .page-head h1 {
-  margin-right: auto;
+  margin: 0;
+}
+
+.page-head .lead {
+  margin-top: var(--s4);
+  max-width: 62ch;
 }
 
 /* --- colophon ------------------------------------------------------------ */

@@ -8,7 +8,7 @@ import { el, link } from '../dom.js';
 import { forecastView, rhythmView } from '../model.js';
 import { getState, subscribe } from '../store.js';
 import { formatDays, formatNumber } from '../format.js';
-import { subscribeTimeZone } from '../time-zone.js';
+import { getTimeZone, subscribeTimeZone } from '../time-zone.js';
 import { fact, factGrid, heatmapBlock, leaf, rhythmChart, windowList } from './_parts.js';
 
 export async function render(host, app) {
@@ -106,7 +106,7 @@ export async function render(host, app) {
       }),
       el('h3', { class: 'subhead' }, t('rhythm.windowsTitle')),
       el('p', { class: 'field-hint' }, t('rhythm.windowsNote')),
-      windowList(view.windows, t),
+      windowList(view.windows, t, { locale, timeZone: getTimeZone() }),
     );
   }
 
@@ -120,6 +120,16 @@ export async function render(host, app) {
       return;
     }
     const rows = view.months.slice(0, 12);
+    const monthLabel = (value) => {
+      const match = /^(\d{4})-(\d{2})$/.exec(String(value ?? ''));
+      if (!match) return value ?? '—';
+      const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
+      return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'zh-CN', {
+        year: 'numeric',
+        month: 'long',
+        timeZone: 'UTC',
+      }).format(date);
+    };
     if (!rows.length) {
       monthHost.append(el('p', { class: 'empty' }, t('common.unavailable')));
       return;
@@ -144,7 +154,7 @@ export async function render(host, app) {
         el(
           'tr',
           {},
-          el('td', {}, row.month ?? '—'),
+          el('td', {}, monthLabel(row.month)),
           el('td', { class: 'num' }, formatNumber(row.resets, locale)),
           el('td', { class: 'num' }, formatNumber(row.banked, locale)),
         ),
@@ -186,6 +196,7 @@ export async function render(host, app) {
     if (backtest && backtest.brier !== null) {
       push(t('rhythm.paramBrier'), backtest.brier);
       push(t('rhythm.paramBaseline'), backtest.baselineBrier);
+      if (backtest.method) push(t('rhythm.paramBacktestMethod'), backtest.method === 'walk-forward' ? t('rhythm.methodWalkForward') : backtest.method);
     }
 
     if (rows.length) {
@@ -193,11 +204,18 @@ export async function render(host, app) {
       const body = el('tbody');
       for (const [label, value] of rows) body.append(el('tr', {}, el('th', { scope: 'row' }, label), el('td', {}, String(value))));
       table.append(body);
-      methodHost.append(el('div', { class: 'table-wrap' }, table));
+      methodHost.append(
+        el(
+          'details',
+          { class: 'method-details' },
+          el('summary', {}, t('rhythm.paramsSummary')),
+          el('div', { class: 'table-wrap' }, table),
+        ),
+      );
     }
 
     const faq = el('div', { class: 'faq' });
-    for (const key of ['q1', 'q2', 'q3']) {
+    for (const key of ['q1', 'q2', 'q3', 'q4']) {
       faq.append(
         el(
           'details',

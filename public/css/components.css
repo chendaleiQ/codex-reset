@@ -364,7 +364,7 @@
 
 .leaf-head {
   display: flex;
-  align-items: flex-end;
+  align-items: baseline;
   gap: var(--s5);
   flex-wrap: wrap;
   margin-bottom: var(--s6);
@@ -379,7 +379,6 @@
   font-size: var(--t-ui);
   color: var(--ink-3);
   max-width: 58ch;
-  padding-bottom: 3px;
 }
 
 .leaf-tools {
@@ -1375,8 +1374,8 @@
 
 .verdict-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 1.35fr);
-  gap: var(--s5) var(--s7);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s5) var(--s6);
   align-items: start;
   margin-top: var(--s6);
   padding-top: var(--s5);
@@ -1427,18 +1426,23 @@
 }
 
 .verdict-facts {
+  grid-column: 1 / -1;
   display: grid;
-  gap: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 var(--s6);
+  margin-top: var(--s3);
   border-top: 1px solid var(--hair);
 }
 
 .verdict-facts .fact {
-  display: grid;
-  grid-template-columns: minmax(7.5rem, 0.85fr) minmax(0, 1.15fr);
-  column-gap: var(--s4);
-  align-items: baseline;
-  padding: var(--s4) 0;
-  border-bottom: 1px solid var(--hair);
+  display: block;
+  padding: var(--s4) var(--s5) var(--s4) 0;
+  border-bottom: 0;
+  border-right: 1px solid var(--hair);
+}
+
+.verdict-facts .fact:nth-child(3n) {
+  border-right: 0;
 }
 
 .verdict-facts .fact:first-child {
@@ -1451,12 +1455,10 @@
 }
 
 .verdict-facts .fact dt {
-  margin: 0;
-  grid-column: 1;
+  margin: 0 0 6px;
 }
 
 .verdict-facts .fact dd {
-  grid-column: 2;
   margin: 0;
   font-size: var(--t-num);
   font-variant-numeric: tabular-nums;
@@ -1470,6 +1472,36 @@
 .verdict-confidence {
   font-size: var(--t-meta);
   color: var(--ink-3);
+}
+
+/* The published point on a 0–100% track, with the bootstrap band behind it. */
+.verdict-meter {
+  position: relative;
+  display: block;
+  height: 5px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: var(--wash);
+  overflow: hidden;
+}
+
+.verdict-meter-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--lo);
+  width: calc(var(--hi) - var(--lo));
+  background: color-mix(in srgb, var(--line-cobalt) 22%, transparent);
+}
+
+.verdict-meter-band::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--at) - var(--lo));
+  width: 2px;
+  background: var(--line-cobalt);
 }
 
 .verdict-note {
@@ -1575,11 +1607,125 @@
   outline-offset: 1px;
 }
 
-.heatmap-legend {
+.heatmap-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3) var(--s5);
   margin-top: var(--s3);
+}
+
+.heatmap-legend {
+  margin: 0;
   font-size: var(--t-meta);
   color: var(--ink-3);
   max-width: none;
+}
+
+.heatmap-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  font-size: var(--t-meta);
+  color: var(--ink-3);
+}
+
+.heatmap-scale-label {
+  padding: 0 3px;
+}
+
+.heatmap-swatch {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--wash);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hair) 55%, transparent);
+}
+
+.heatmap-swatch[data-level='1'] {
+  background: color-mix(in srgb, var(--line-cobalt) 14%, var(--surface));
+  box-shadow: none;
+}
+
+.heatmap-swatch[data-level='2'] {
+  background: color-mix(in srgb, var(--line-cobalt) 30%, var(--surface));
+  box-shadow: none;
+}
+
+.heatmap-swatch[data-level='3'] {
+  background: color-mix(in srgb, var(--line-cobalt) 52%, var(--surface));
+  box-shadow: none;
+}
+
+.heatmap-swatch[data-level='4'] {
+  background: var(--line-cobalt);
+  box-shadow: none;
+}
+
+/* Collapsed technical detail: plain copy first, parameters on demand. */
+.method-details {
+  margin-top: var(--s5);
+  border-top: 1px solid var(--hair);
+}
+
+.method-details > summary {
+  padding: var(--s4) 0;
+  font-size: var(--t-ui);
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.method-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.method-details > summary::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid var(--ink-3);
+  border-bottom: 1.5px solid var(--ink-3);
+  transform: rotate(45deg);
+  transition: transform 160ms ease;
+}
+
+.method-details[open] > summary::before {
+  transform: rotate(225deg);
+}
+
+.method-details > summary:hover {
+  color: var(--line-cobalt);
+}
+
+/* Two shades in the hour chart: busier hours vs the rest. */
+.hours-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--s3);
+  font-size: var(--t-meta);
+  color: var(--ink-3);
+}
+
+.hours-legend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--line-cobalt) 30%, var(--surface));
+}
+
+.hours-legend-swatch[data-peak='true'] {
+  background: var(--line-cobalt);
 }
 
 /* --- the window list: the busiest three-hour stretches ------------------- */
@@ -1596,6 +1742,20 @@
   font-size: var(--t-ui);
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
+}
+
+.window-row {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr);
+  gap: var(--s3);
+  align-items: center;
+}
+
+.window-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
 
 .window-row {
@@ -1771,11 +1931,13 @@
 
 .plan-hero {
   display: block;
-  padding: var(--s5) var(--s6);
-  background: var(--surface);
-  border: 1px solid var(--hair);
-  border-radius: 14px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
   margin-bottom: var(--s6);
+  padding-bottom: var(--s5);
+  border-bottom: 1px solid var(--hair-strong);
 }
 
 .plan-hero .plan-badge {
@@ -1989,4 +2151,97 @@
 
 .ssr-row.ssr-row--record {
   align-items: baseline;
+}
+
+/* --- v3 polish: status dot, recent table, mobile stacks ------------------ */
+
+.level-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.level-text::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-4);
+}
+
+.level-text[data-tone='ok']::before {
+  background: var(--ok);
+}
+
+.level-text[data-tone='warn']::before {
+  background: var(--warn);
+}
+
+/* Keep the gap and the source link from reading as one string. */
+.recent-table td:nth-child(2) {
+  padding-right: var(--s6);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.recent-table td:nth-child(3) {
+  padding-left: var(--s3);
+}
+
+.plot-axis-x text {
+  font-size: 10px;
+  fill: var(--ink-4);
+}
+
+@media (max-width: 860px) {
+  .verdict-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .verdict-facts .fact {
+    border-right: 0;
+    border-bottom: 1px solid var(--hair);
+    padding-right: 0;
+  }
+
+  .verdict-facts .fact:last-child {
+    border-bottom: 0;
+  }
+
+  .heatmap-foot {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .window-row {
+    grid-template-columns: 1.3rem minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .verdict-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s5);
+  }
+
+  .verdict-value {
+    font-size: 58px;
+  }
+
+  .verdict-meter {
+    max-width: 220px;
+  }
+
+  .heatmap-grid {
+    min-width: 480px;
+  }
+
+  .heatmap-hour {
+    font-size: 9px;
+  }
+
+  .recent-table td:nth-child(2) {
+    padding-right: var(--s4);
+  }
 }

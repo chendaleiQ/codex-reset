@@ -42,6 +42,7 @@ export function forecastView(forecast, locale) {
           startHour: num(row.start_hour, 0),
           endHour: num(row.end_hour, 0),
           count: num(row.count, 0),
+          total: num(row.total, total),
           share,
           label: row.label ?? `${String(num(row.start_hour, 0)).padStart(2, '0')}:00–${String(num(row.end_hour, 0)).padStart(2, '0')}:00 UTC`,
         };
@@ -58,6 +59,12 @@ export function forecastView(forecast, locale) {
     chance48: isNum(probabilities.rounded_48h) ? Number(probabilities.rounded_48h) : null,
     range24: bounds(probabilities.range_24h?.lower, probabilities.range_24h?.upper, locale),
     range48: bounds(probabilities.range_48h?.lower, probabilities.range_48h?.upper, locale),
+    range24Numeric: isNum(probabilities.range_24h?.lower) && isNum(probabilities.range_24h?.upper)
+      ? { lower: Math.round(Number(probabilities.range_24h.lower) * 100), upper: Math.round(Number(probabilities.range_24h.upper) * 100) }
+      : null,
+    range48Numeric: isNum(probabilities.range_48h?.lower) && isNum(probabilities.range_48h?.upper)
+      ? { lower: Math.round(Number(probabilities.range_48h.lower) * 100), upper: Math.round(Number(probabilities.range_48h.upper) * 100) }
+      : null,
     confidence: typeof forecast.confidence === 'string' ? forecast.confidence : null,
     confidenceNote: forecast.confidence_note ?? null,
     cadence: cadence
@@ -87,6 +94,8 @@ export function forecastView(forecast, locale) {
           label:
             window.label ??
             `${String(num(window.start_hour, 0)).padStart(2, '0')}:00–${String(num(window.end_hour, 0)).padStart(2, '0')}:00 UTC`,
+          count: num(window.count, 0),
+          total: num(window.total, 0),
           share: isNum(window.share)
             ? Math.round(Number(window.share) * 100)
             : intervalSample > 0
@@ -318,6 +327,7 @@ export function dataStatusView(payload) {
     checks: (Array.isArray(payload.checks) ? payload.checks : []).map((check) => ({
       name: String(check.name ?? ''),
       ok: check.ok === true,
+      value: check.value === null || check.value === undefined ? null : Number(check.value),
       detail: check.detail ?? '',
     })),
     params: payload.params ?? {},

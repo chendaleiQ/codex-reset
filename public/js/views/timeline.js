@@ -68,7 +68,7 @@ export async function render(host, app) {
       return;
     }
     const { gaps } = resetRhythm(timeline.events);
-    const readout = el('p', { class: 'pair-readout' }, t('timeline.rhythmNote'));
+    const readout = el('p', { class: 'pair-readout' }, t('timeline.chartHint'));
     const chart = rhythmChart(gaps, { locale, t, readout });
     rhythmHost.append(readout, chart);
     chartCleanup = chart.cleanup;
@@ -191,9 +191,20 @@ export async function render(host, app) {
           el(
             'td',
             {},
-            isConfirmedReset(event)
-              ? el('span', { class: 'mark', dataset: { tone: 'ok', shape: 'rule' } }, t('timeline.verified'))
-              : el('span', { class: 'mark', dataset: { tone: 'warn', shape: 'ring' } }, t('timeline.announced')),
+            el(
+              'span',
+              {
+                class: 'level-text',
+                dataset: {
+                  tone: event.kind === 'banked' ? 'plain' : isConfirmedReset(event) ? 'ok' : 'warn',
+                },
+              },
+              event.kind === 'banked'
+                ? t('timeline.recorded')
+                : isConfirmedReset(event)
+                  ? t('timeline.verified')
+                  : t('timeline.announced'),
+            ),
           ),
           el(
             'td',

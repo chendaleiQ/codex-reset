@@ -51,22 +51,22 @@ const LABELS = {
     skip: '跳到主要内容',
     nav: { home: '概览', rhythm: '重置节奏', timeline: '重置记录', status: '数据状态', vigil: '一起等重置' },
     readGuide: '阅读说明',
-    guidesTitle: 'Codex 额度重置：先搞清楚这几件事',
+    guidesTitle: '先搞清楚这几件事',
     guidesLead:
-      '如果你刚遇到额度用完、或者看到有人说「Codex 重置了」，下面三篇说明可以帮你判断这次重置和你有没有关系。所有数字都以账号里「设置 → 用量」为准，本站只记录公开的全局重置。',
+      '如果你刚遇到额度用完，或者看到有人说 Codex 重置了，下面几篇可以帮你判断这次重置和你有没有关系。所有数字以账号里「设置 → 用量」为准，本站只记录公开的全局重置。',
     faqTitle: '常见问题',
     faq: [
       {
         q: 'Codex 今天会重置吗？',
-        a: '全站范围的重置由 OpenAI 决定，没有公开的时间表。首页的 24 与 48 小时概率来自本站台账上的历史节奏模型，带区间与置信度，是估计而不是承诺。',
+        a: '全站范围的重置由 OpenAI 决定，没有公开时间表。首页的 24 与 48 小时概率来自本站台账里的历史间隔，带可能范围和可信度，是估计，不是承诺。',
       },
       {
         q: 'Codex 重置和 5 小时限额刷新是一回事吗？',
-        a: '不是。5 小时窗口每天会自动刷新多次；本站记录的是 OpenAI 主动对所有人发起的全局重置，两者完全不同。',
+        a: '不是。5 小时窗口每天会自动刷新多次；这里记录的是 OpenAI 主动对所有人发起的全局重置，两者完全不同。',
       },
       {
         q: '这里的数据从哪里来？',
-        a: '来自本站自己维护的公开台账：每条重置或备用额度都能追溯到一条公开的 X 原帖，记录在仓库的 data/ledger.json 里，不调用任何第三方接口。',
+        a: '来自本站自己维护的公开台账：每条都能点回一条 X 原帖，不调用第三方接口。',
       },
     ],
     historicalTitle: '历史上的重置节奏',
@@ -254,22 +254,22 @@ const LABELS = {
     skip: 'Skip to main content',
     nav: { home: 'Overview', rhythm: 'Reset rhythm', timeline: 'Reset history', status: 'Data status', vigil: 'The vigil' },
     readGuide: 'Read the guide',
-    guidesTitle: 'Codex resets: three things worth getting straight',
+    guidesTitle: 'Three things worth getting straight',
     guidesLead:
-      'If you just ran out of quota, or saw someone claim “Codex reset”, these three explainers tell you whether it applies to your account. Your account (Settings → Usage) is the authority; this site tracks public global resets only.',
+      'If you have just run out of quota, or saw someone say Codex reset, the pieces below help you decide whether this reset has anything to do with you. Your account under Settings → Usage is the authority; this site only records public global resets.',
     faqTitle: 'Common questions',
     faq: [
       {
         q: 'Did Codex reset today?',
-        a: 'A site-wide reset is OpenAI’s call and has no public schedule. The 24h and 48h probabilities on the overview come from a cadence model over this site’s own ledger, with a range and a confidence level — an estimate, not a promise.',
+        a: 'A site-wide reset is up to OpenAI and there is no public schedule. The 24h and 48h probabilities on this page come from the historical gaps in this site’s ledger, carrying a likely range and a confidence level — an estimate, not a promise.',
       },
       {
         q: 'Is a Codex reset the same as the 5-hour limit refreshing?',
-        a: 'No. The 5-hour window refreshes automatically several times a day. This site records global resets that OpenAI grants to everyone.',
+        a: 'No. The 5-hour window refreshes automatically several times a day; what is recorded here is a global reset that OpenAI grants to everyone.',
       },
       {
         q: 'Where does the data come from?',
-        a: 'From this site’s own public ledger: every reset and banked grant traces back to a public post on X and is stored in data/ledger.json in the repository. No third-party API is called.',
+        a: 'From this site’s own public ledger: every row links back to a public post on X, and no third-party API is called.',
       },
     ],
     historicalTitle: 'Historical cadence',
@@ -451,10 +451,14 @@ function formatDateTime(value, locale) {
   const time = Date.parse(value ?? '');
   if (!Number.isFinite(time)) return tx(locale, 'common.unavailable');
   const zone = zoneFor(locale);
-  const options =
-    locale === 'en'
-      ? { timeZone: zone, month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }
-      : { timeZone: zone, month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false };
+  const options = {
+    timeZone: zone,
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  };
   return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'zh-CN', options).format(new Date(time));
 }
 
@@ -569,12 +573,49 @@ function breadcrumb(origin, locale, trail) {
 
 /* -------------------------------------------------------------- first paint */
 
-function statCard(labelText, value, note) {
-  return tag(
-    'div',
-    { class: 'ssr-stat' },
-    [tag('span', { class: 'ssr-stat-label' }, esc(labelText)), tag('strong', { class: 'ssr-stat-value' }, esc(value)), note ? tag('span', { class: 'ssr-stat-note' }, esc(note)) : ''].join(''),
-  );
+/**
+ * Sibling of `public/js/format.js` for the server: same locale tags, same
+ * rounding, so the first paint and the hydrated view cannot disagree.
+ */
+function formatDays(value, locale) {
+  const days = Number(value);
+  if (!Number.isFinite(days)) return null;
+  return new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'zh-CN', {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: days < 10 ? 1 : 0,
+  }).format(days);
+}
+
+function formatNumber(value, locale) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'zh-CN').format(n);
+}
+
+function relativeTime(iso, locale) {
+  const at = Date.parse(iso ?? '');
+  if (!Number.isFinite(at)) return '';
+  const diff = at - Date.now();
+  const abs = Math.abs(diff);
+  const formatter = new Intl.RelativeTimeFormat(locale === 'en' ? 'en-US' : 'zh-CN', { numeric: 'auto', style: 'short' });
+  if (abs < 60_000) return formatter.format(Math.round(diff / 1000), 'second');
+  if (abs < 3_600_000) return formatter.format(Math.round(diff / 60_000), 'minute');
+  if (abs < 86_400_000) return formatter.format(Math.round(diff / 3_600_000), 'hour');
+  return formatter.format(Math.round(diff / 86_400_000), 'day');
+}
+
+/** Date with the year, optionally with the clock — /status always shows years. */
+function formatFullDate(value, locale, withTime = false) {
+  const time = Date.parse(value ?? '');
+  if (!Number.isFinite(time)) return null;
+  const options = {
+    timeZone: zoneFor(locale),
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  };
+  if (withTime) Object.assign(options, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'zh-CN', options).format(new Date(time));
 }
 
 /** A row whose text came from an English source stays marked as English. */
@@ -583,13 +624,56 @@ function textLang(text, locale) {
   return /^[\x00-\x7f]*$/.test(ascii) && ascii.length > 0 ? 'en' : locale;
 }
 
+const padHour = (hour) => `${String(Math.max(0, Math.min(23, Number(hour) || 0))).padStart(2, '0')}:00`;
+
+/** Shifts a UTC hour into the locale's zone, exactly like `_parts.js`. */
+function windowRange(startHour, endHour, locale = 'zh') {
+  const start = Number(startHour);
+  const end = Number(endHour);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  const zone = zoneFor(locale);
+  const edges = [start, end].map((hour) => {
+    const stamp = Date.UTC(2026, 0, 5, hour);
+    const label = new Intl.DateTimeFormat('en-US', { timeZone: zone, hour: '2-digit', hourCycle: 'h23' }).format(new Date(stamp));
+    return `${label}:00`;
+  });
+  return `${edges[0]}–${edges[1]}`;
+}
+
+const utcRangeLabel = (startHour, endHour) => `${padHour(startHour)}–${padHour(endHour)}`;
+
+function unitFor(locale, unit) {
+  if (!unit) return null;
+  if (locale === 'zh') return { days: '天', hours: '小时', resets: '次', count: '次' }[unit] || null;
+  return { days: 'days', hours: 'hours', resets: 'resets', count: 'resets' }[unit] || null;
+}
+
+function faqItems(locale) {
+  return ['q1', 'q2', 'q3', 'q4', 'q5', 'q6']
+    .map((key) => ({ q: tx(locale, `faq.${key}`), a: tx(locale, `faq.a${key.slice(1)}`) }))
+    .filter((item) => item.q && item.a);
+}
+
+function rhythmFaqItems(locale) {
+  return ['q1', 'q2', 'q3', 'q4']
+    .map((key) => ({ q: tx(locale, `rhythm.faq.${key}`), a: tx(locale, `rhythm.faq.a${key.slice(1)}`) }))
+    .filter((item) => item.q && item.a);
+}
+
+function faqDetails(items) {
+  return tag('div', { class: 'faq' }, items.map((item) => tag('details', {}, [
+    tag('summary', {}, esc(item.q)),
+    tag('p', {}, esc(item.a)),
+  ].join(''))).join(''));
+}
+
 /* ------------------------------------------------------------- page meta */
 
 /**
- * Copy that belongs to the server renderer rather than to the client route
- * table. `/rhythm` is new in v2 and must render even if the client router has
- * not learned the route yet, and `/` + `/status` changed meaning, so their
- * head copy lives here too. Everything else still comes from `seo-meta.js`.
+ * Head copy: the body copy comes from `public/js/i18n.js`, but the metadata is
+ * server-rendered first and must satisfy the crawler checks, so it lives here.
+ * `/rhythm` is handled locally so the SSR route never depends on the client
+ * route table shipping `rhythm` in the same order.
  */
 const LOCAL_META = {
   home: {
@@ -597,30 +681,30 @@ const LOCAL_META = {
       path: '/',
       title: 'Codex 重置追踪：今天会重置吗？重置概率与记录',
       description:
-        '追踪 OpenAI Codex 的全局额度重置：最近一次已确认重置、未来 24 与 48 小时重置概率及区间、重置节奏与完整记录。数据来自本站公开台账，每条都可追溯到一条 X 原帖。',
+        '看本站自己的公开台账：上一次 Codex 重置是什么时候、未来 24 和 48 小时再重置的可能有多大、可能范围和可信度，以及最近的重置记录。每条都能点回原帖。',
       h1: 'Codex 今天会重置吗？',
     },
     en: {
       path: '/en/',
       title: 'Codex Reset Tracker — Did Codex Reset Today? Records & Forecast',
       description:
-        'Track OpenAI Codex quota resets: the last verified reset, 24h and 48h probabilities with ranges, reset rhythm and the full record — from this site’s own ledger.',
+        'From this site’s own ledger: when Codex last reset, how likely another reset is within 24 or 48 hours, the likely range and confidence, and the recent record.',
       h1: 'Will Codex reset today?',
     },
   },
   status: {
     zh: {
       path: '/status',
-      title: 'Codex 数据状态：台账新鲜度、覆盖范围与模型回测',
+      title: 'Codex 数据状态：台账更新、覆盖范围与缺口',
       description:
-        '本站只有一个数据源：仓库里的公开台账。这里说明它更新到什么时候、覆盖了哪些时间、哪里还有缺口，以及模型参数与自带回测结果。',
+        '本站只有一个数据源：仓库里的公开台账。这里写清楚它上次什么时候更新、覆盖了哪段时间、哪些地方还有缺口，以及数据检查是否正常。',
       h1: '数据状态',
     },
     en: {
       path: '/en/status',
-      title: 'Codex Reset Data Status — Ledger Freshness, Coverage & Backtest',
+      title: 'Codex Data Status — Ledger Updates, Coverage and Gaps',
       description:
-        'One data source: the public ledger in this repository. How fresh it is, which period it covers, where the gaps are, and the model parameters behind every number.',
+        'One data source: the public ledger in this repository. When it was last updated, which period it covers, where the gaps are, and whether the checks pass.',
       h1: 'Data status',
     },
   },
@@ -629,17 +713,15 @@ const LOCAL_META = {
       path: '/rhythm',
       title: '重置节奏：Codex 重置的间隔、时段与高频窗口',
       description:
-        '把每一次已确认重置放到同一条时间轴上：间隔多久、落在星期几的几点、下一次最可能出现在哪个窗口，以及这些数字是怎么算出来的。',
+        '过去每次重置之间隔了多久、通常发生在星期几的几点、下一次最可能出现在哪个时段，以及这些数字是怎么算出来的。全部由本站台账在本地计算。',
       h1: '重置节奏',
-      lead: null,
     },
     en: {
       path: '/en/rhythm',
       title: 'Codex Reset Rhythm — Intervals, Hour Windows and Cadence',
       description:
-        'Every confirmed reset on one timeline: how far apart they land, which weekday and hour they cluster in, the most likely window, and how each number is computed.',
+        'How far apart Codex resets have landed, which weekday and hour they cluster in, the most likely window, and how each number is computed — from this site’s own ledger.',
       h1: 'Reset rhythm',
-      lead: null,
     },
   },
 };
@@ -659,7 +741,7 @@ function primaryNav(locale) {
   return ['home', 'rhythm', 'timeline']
     .map((key) => {
       const page = pageMetaFor(locale, key);
-      return tag('a', { href: page.path }, esc(label(locale, 'nav')[key]));
+      return tag('a', { href: page.path }, esc(tx(locale, `nav.${key}`)));
     })
     .join('');
 }
@@ -668,10 +750,10 @@ function relatedNav(locale) {
   return tag('nav', { class: 'seo-related', 'aria-label': label(locale, 'relatedTitle') }, [
     tag('h2', {}, esc(label(locale, 'relatedTitle'))),
     tag('ul', {}, [
-      tag('li', {}, tag('a', { href: pageMetaFor(locale, 'rhythm').path }, esc(navLabel(locale, 'rhythm')))),
-      tag('li', {}, tag('a', { href: pageMetaFor(locale, 'timeline').path }, esc(navLabel(locale, 'timeline')))),
-      tag('li', {}, tag('a', { href: pageMetaFor(locale, 'status').path }, esc(navLabel(locale, 'status')))),
-      tag('li', {}, tag('a', { href: pageMetaFor(locale, 'vigil').path }, esc(navLabel(locale, 'vigil')))),
+      tag('li', {}, tag('a', { href: pageMetaFor(locale, 'rhythm').path }, esc(tx(locale, 'nav.rhythm')))),
+      tag('li', {}, tag('a', { href: pageMetaFor(locale, 'timeline').path }, esc(tx(locale, 'nav.timeline')))),
+      tag('li', {}, tag('a', { href: pageMetaFor(locale, 'status').path }, esc(tx(locale, 'nav.status')))),
+      tag('li', {}, tag('a', { href: pageMetaFor(locale, 'vigil').path }, esc(tx(locale, 'nav.vigil')))),
       tag('li', {}, tag('a', { href: articlePath('codex-reset', locale) }, esc(articleMeta('codex-reset', locale).h1))),
     ].join('')),
   ].join(''));
@@ -679,292 +761,237 @@ function relatedNav(locale) {
 
 /* ------------------------------------------------------------- components */
 
-/** One `.fact` inside a `.factgrid`: label, value and an optional footnote. */
-function factCard(labelText, value, note) {
-  return tag('div', { class: 'fact ssr-stat' }, [
-    tag('span', { class: 'fact-label ssr-stat-label' }, esc(labelText)),
-    tag('strong', { class: 'fact-value ssr-stat-value' }, esc(value)),
-    note ? tag('p', { class: 'fact-note ssr-stat-note' }, esc(note)) : '',
+/** One figure inside a `.factgrid`, matching `_parts.js`'s `fact()`. */
+function factCard(locale, term, value, sub, { unit, html } = {}) {
+  const body = [html ? String(value) : esc(value)];
+  const unitText = unitFor(locale, unit);
+  if (unitText) body.push(tag('span', { class: 'unit' }, esc(unitText)));
+  if (sub) body.push(tag('p', {}, esc(sub)));
+  return tag('div', { class: 'fact' }, tag('dt', {}, esc(term)) + tag('dd', {}, body.join('')));
+}
+
+function factGrid(cards, className = 'factgrid') {
+  const items = cards.filter(Boolean);
+  return items.length ? tag('dl', { class: className }, items.join('')) : '';
+}
+
+/** The leaf shell: a heading, an optional note line, then the content. */
+function leafSection(locale, { title, note, id }, children) {
+  const head = [tag('h2', {}, esc(title))];
+  if (note) head.push(tag('p', { class: 'leaf-note' }, esc(note)));
+  const attrs = { class: 'leaf' };
+  if (id) attrs.id = id;
+  return tag('section', attrs, [
+    tag('div', { class: 'leaf-head' }, head.join('')),
+    ...children,
   ].join(''));
 }
 
-function factGrid(items) {
-  const cards = items.filter(Boolean).map((item) => factCard(item.label, item.value, item.note)).join('');
-  return cards ? tag('div', { class: 'factgrid ssr-stats' }, cards) : '';
-}
-
-/** Same table, but with localised headers for the given locale. */
-function metricTable(locale, rows) {
-  return tag('table', { class: 'data-table ssr-table' }, [
-    tag('thead', {}, tag('tr', {}, [
-      tag('th', { scope: 'col' }, esc(label(locale, 'valueTable'))),
-      tag('th', { scope: 'col' }, esc(label(locale, 'valueValue'))),
-    ].join(''))),
-    tag('tbody', {}, rows.map((row) => tag('tr', {}, [
-      tag('th', { scope: 'row' }, esc(row[0])),
-      tag('td', {}, esc(row[1])),
-    ].join(''))).join('')),
+function paramTable(rows) {
+  return tag('table', { class: 'data-table param-table' }, [
+    tag('tbody', {}, rows.map((row) => tag('tr', {},
+      tag('th', { scope: 'row' }, esc(row[0])) + tag('td', {}, esc(row[1])))).join('')),
   ].join(''));
 }
 
-/** `08:00` in the visitor-facing zone for a UTC hour. */
-function zoneHourLabel(hour, locale) {
-  const reference = new Date();
-  reference.setUTCHours(hour, 0, 0, 0);
-  return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'zh-CN', {
-    timeZone: zoneFor(locale),
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(reference);
-}
-
-function utcRangeLabel(startHour, endHour) {
-  const pad = (hour) => `${String(hour).padStart(2, '0')}:00`;
-  return `${pad(startHour)}–${pad(endHour)}`;
-}
-
-function pctRange(range) {
-  if (!range || typeof range.lower !== 'number' || typeof range.upper !== 'number') return null;
-  return `${Math.round(range.lower * 100)}–${Math.round(range.upper * 100)}%`;
-}
-
-function confidenceWord(locale, level) {
-  const table = label(locale, 'confidence');
-  return table[level] || table.low;
-}
-
-/** The three-hour windows, with a share computed if the payload lacks one. */
-function normalizeWindows(snap) {
-  const all = Array.isArray(snap.rhythm && snap.rhythm.windows) ? snap.rhythm.windows : [];
-  const total = snap.rhythm && snap.rhythm.stats && snap.rhythm.stats.resets ? snap.rhythm.stats.resets : snap.resets.length;
-  return all.map((window) => ({
-    ...window,
-    share: typeof window.share === 'number' ? window.share : total ? window.count / total : 0,
-  }));
-}
-
-/** Top windows by count. A payload that already ships exactly five is trusted as-is. */
-function topWindows(snap, limit = 5) {
-  const rows = normalizeWindows(snap);
-  if (rows.length > limit) rows.sort((a, b) => b.count - a.count || a.start_hour - b.start_hour);
-  return rows.slice(0, limit);
-}
-
-/** The `.heatmap` block shared by the overview and /rhythm. */
-function heatmapBlock(locale, snap) {
-  const grid = Array.isArray(snap.rhythm && snap.rhythm.heatmap) ? snap.rhythm.heatmap : [];
-  if (!grid.length) return '';
-  const stored = snap.rhythm.weekday_labels && snap.rhythm.weekday_labels[locale === 'en' ? 'en' : 'zh'];
-  const days = Array.isArray(stored) && stored.length === 7 ? stored : label(locale, 'weekdays');
-  const total = snap.rhythm.stats && snap.rhythm.stats.resets ? snap.rhythm.stats.resets : snap.resets.length;
-  const max = Math.max(1, ...grid.flat());
-  const levelOf = (count) => {
-    if (!count) return 0;
-    const share = count / max;
-    if (share <= 0.25) return 1;
-    if (share <= 0.5) return 2;
-    if (share <= 0.75) return 3;
-    return 4;
-  };
-  const head = [tag('span', { class: 'heatmap-corner', 'aria-hidden': 'true' }, '')];
-  for (let hour = 0; hour < 24; hour += 1) {
-    head.push(tag('span', { class: 'heatmap-hour', 'aria-hidden': 'true' }, String(hour).padStart(2, '0')));
-  }
-  const cells = [];
-  for (let day = 0; day < 7; day += 1) {
-    cells.push(tag('span', { class: 'heatmap-day' }, esc(days[day] || '')));
-    for (let hour = 0; hour < 24; hour += 1) {
-      const count = grid[day] && grid[day][hour] !== undefined ? grid[day][hour] : 0;
-      const title = label(locale, 'heatmapCell')
-        .replace('{day}', days[day] || '')
-        .replace('{hour}', `${String(hour).padStart(2, '0')}:00`)
-        .replace('{count}', String(count));
-      cells.push(tag('span', { class: 'heatmap-cell', 'data-level': String(levelOf(count)), title }, ''));
-    }
-  }
-  return tag('div', { class: 'heatmap', role: 'img', 'aria-label': label(locale, 'heatmapAria').replace('{n}', String(total)) }, [
-    tag('div', { class: 'heatmap-grid' }, head.join('') + cells.join('')),
-    tag('p', { class: 'heatmap-legend' }, esc(label(locale, 'heatmapLegend'))),
-  ].join(''));
-}
-
-function kindOfRecord(locale, record) {
-  if (record.kind === 'banked' || record.type === 'credits') return label(locale, 'kindBanked');
-  if (record.type === 'reset' && record.pending) return label(locale, 'pending');
-  if (record.type === 'reset') return label(locale, 'kindReset');
-  return label(locale, 'kindOther');
-}
-
-function recordRow(locale, record) {
-  const source = record.url
-    ? tag('a', { href: record.url, rel: 'noopener nofollow', target: '_blank' }, esc(label(locale, 'sourcePost')))
-    : tag('span', { class: 'ssr-row-text' }, esc(label(locale, 'sourceLedger')));
-  return tag('li', { class: 'ssr-row ssr-row--record' }, [
-    tag('time', { datetime: isoStamp(record.at) || '' }, esc(formatDateTime(record.at, locale))),
-    tag('span', { class: 'ssr-row-zone' }, esc(zoneLabel(locale))),
-    tag('span', { class: 'ssr-row-kind' }, esc(kindOfRecord(locale, record))),
-    source,
-  ].join(''));
+/** `data/meta.json` labels are Chinese; keep the English page free of them. */
+function sourceLabel(locale, source) {
+  const text = source.label || '';
+  if (locale !== 'en') return text || tx(locale, 'datastatus.sourceFallback');
+  const url = String(source.url || '');
+  if (/x\.com/i.test(url)) return tx(locale, 'datastatus.sourceFallback');
+  return /[\u4e00-\u9fff]/.test(text) ? tx(locale, 'datastatus.sourceFallback') : text;
 }
 
 /* ---------------------------------------------------------------- verdict */
 
 function probabilityCard(locale, snap, hours) {
-  const level = snap.confidence || 'low';
   const value = hours === 24 ? snap.chance24 : snap.chance48;
-  const range = pctRange(hours === 24 ? snap.forecast.probabilities.range_24h : snap.forecast.probabilities.range_48h);
-  return tag('div', { class: 'verdict-number', 'data-confidence': level }, [
-    tag('strong', { class: 'verdict-value' }, esc(value === null || value === undefined ? '—' : `${value}%`)),
-    tag('span', { class: 'verdict-label' }, esc(label(locale, hours === 24 ? 'probability24' : 'probability48'))),
-    tag('span', { class: 'verdict-range' }, esc(range ? label(locale, 'rangeLabel').replace('{range}', range) : label(locale, 'insufficient'))),
-    tag('span', { class: 'verdict-confidence' }, esc(label(locale, 'confidenceLabel').replace('{level}', confidenceWord(locale, level)))),
+  const range = hours === 24 ? snap.forecast.probabilities.range_24h : snap.forecast.probabilities.range_48h;
+  const numeric = range && typeof range.lower === 'number' && typeof range.upper === 'number'
+    ? { lo: Math.round(range.lower * 100), hi: Math.round(range.upper * 100) }
+    : null;
+  const at = value === null || value === undefined ? null : value;
+  const meter = numeric && at !== null
+    ? tag('span', { class: 'verdict-meter', 'aria-hidden': 'true' }, tag('span', {
+        class: 'verdict-meter-band',
+        style: `--lo:${numeric.lo}%;--hi:${numeric.hi}%;--at:${at}%`,
+      }, ''))
+    : '';
+  const rangeText = numeric
+    ? tx(locale, 'verdict.range', { range: `${numeric.lo}–${numeric.hi}%` })
+    : tx(locale, 'verdict.rangeNone');
+  return tag('div', { class: 'verdict-number', 'data-confidence': snap.confidence || 'low' }, [
+    tag('span', { class: 'verdict-value' }, value === null || value === undefined ? '—' : `${value}%`),
+    tag('span', { class: 'verdict-label' }, esc(tx(locale, hours === 24 ? 'verdict.window24' : 'verdict.window48'))),
+    tag('span', { class: 'verdict-range' }, esc(rangeText)),
+    meter,
   ].join(''));
 }
 
-/** The site's main answer sentence, lifted from the ledger's own numbers. */
-function verdictSentence(locale, snap) {
-  const range24 = pctRange(snap.forecast.probabilities.range_24h);
-  const range48 = pctRange(snap.forecast.probabilities.range_48h);
+/** The one sentence the whole page exists to answer. */
+function verdictAnswer(locale, snap) {
+  const days = snap.ageDays === null || snap.ageDays === undefined ? null : formatDays(snap.ageDays, locale);
   const share = snap.wait && typeof snap.wait.shorter_share === 'number' ? Math.round(snap.wait.shorter_share * 100) : null;
-  const age = snap.wait && snap.wait.days !== null ? snap.wait.days : snap.ageDays;
-  if (locale === 'en') {
-    const chunks = [];
-    if (snap.chance24 !== null && snap.chance24 !== undefined) chunks.push(`a ${snap.chance24}% chance of a reset in the next 24 hours${range24 ? ` (range ${range24})` : ''}`);
-    if (snap.chance48 !== null && snap.chance48 !== undefined) chunks.push(`${snap.chance48}% in the next 48 hours${range48 ? ` (range ${range48})` : ''}`);
-    const first = chunks.length ? `There is ${chunks.join(' and ')}.` : 'Not enough data to publish a probability yet.';
-    const second = age === null || age === undefined
-      ? ''
-      : ` The current wait is ${age} days${share === null ? '' : `, longer than ${share}% of past intervals`}.`;
-    return `${first}${second}`;
-  }
-  const chunks = [];
-  if (snap.chance24 !== null && snap.chance24 !== undefined) chunks.push(`未来 24 小时 ${snap.chance24}%${range24 ? `（区间 ${range24}）` : ''}`);
-  if (snap.chance48 !== null && snap.chance48 !== undefined) chunks.push(`48 小时 ${snap.chance48}%${range48 ? `（区间 ${range48}）` : ''}`);
-  const first = chunks.length ? `重置概率：${chunks.join('，')}。` : '样本不足，暂时不发布概率。';
-  const second = age === null || age === undefined
-    ? ''
-    : `当前已等待 ${age} 天${share === null ? '' : `，比 ${share}% 的历史间隔更长`}。`;
-  return `${first}${second}`;
+  if (snap.chance24 === null || snap.chance48 === null || days === null) return tx(locale, 'verdict.answerNoData');
+  if (share === null) return tx(locale, 'verdict.answerNoShare', { p24: snap.chance24, p48: snap.chance48, days });
+  return tx(locale, 'verdict.answer', { p24: snap.chance24, p48: snap.chance48, days, share });
 }
 
-/** `.verdict` — probabilities, range, confidence, wait comparison, next window. */
-function verdictBlock(locale, snap) {
-  const page = pageMetaFor(locale, 'home');
+function verdictFacts(locale, snap) {
   const facts = [];
-  if (snap.lastResetAt) {
-    facts.push({
-      label: label(locale, 'factLastReset'),
-      value: formatDateTime(snap.lastResetAt, locale),
-      note: `${zoneLabel(locale)} · ${label(locale, 'since').replace('{days}', String(snap.ageDays === null || snap.ageDays === undefined ? '—' : snap.ageDays))}`,
-    });
-  }
-  if (snap.wait && snap.wait.days !== null && snap.wait.days !== undefined) {
-    const share = typeof snap.wait.shorter_share === 'number' ? Math.round(snap.wait.shorter_share * 100) : null;
-    facts.push({
-      label: label(locale, 'factWaited'),
-      value: label(locale, 'days').replace('{n}', String(snap.wait.days)),
-      note: share === null ? '' : label(locale, 'waitedNote')
-        .replace('{share}', String(share))
-        .replace('{median}', String(snap.wait.median_days)),
-    });
-  }
-  // The payload's `window` is the first three-hour slot, not the busiest one;
-  // the overview must agree with the TOP-5 list on /rhythm, so use the maximum.
-  const window = topWindows(snap, 1)[0] || snap.window;
-  if (window) {
-    const total = snap.rhythm.stats && snap.rhythm.stats.resets ? snap.rhythm.stats.resets : snap.resets.length;
-    const share = Math.round((typeof window.share === 'number' ? window.share : window.count / (total || 1)) * 100);
-    facts.push({
-      label: label(locale, 'factNextWindow'),
-      value: `${zoneHourLabel(window.start_hour, locale)}–${zoneHourLabel(window.end_hour, locale)}${locale === 'en' ? ' PT' : '（北京时间）'}`,
-      note: label(locale, 'windowNote')
-        .replace('{range}', utcRangeLabel(window.start_hour, window.end_hour))
-        .replace('{share}', String(share)),
-    });
-  }
-  const factList = tag('dl', { class: 'verdict-facts' }, facts.map((fact) => tag('div', { class: 'fact' }, [
-    tag('dt', {}, esc(fact.label)),
-    tag('dd', {}, [
-      tag('strong', { class: 'fact-value' }, esc(fact.value)),
-      fact.note ? tag('p', {}, esc(fact.note)) : '',
-    ].join('')),
-  ].join(''))).join(''));
-  const level = snap.confidence || 'low';
-  const sample = snap.model && snap.model.interval_sample !== null && snap.model.interval_sample !== undefined ? snap.model.interval_sample : '—';
-  return tag('section', { class: 'verdict', 'aria-labelledby': 'verdict-title' }, [
-    tag('p', { class: 'verdict-eyebrow' }, esc(label(locale, 'verdictEyebrow'))),
-    tag('h1', { id: 'verdict-title' }, esc(page.h1)),
-    tag('p', { class: 'verdict-answer' }, esc(verdictSentence(locale, snap))),
+  const ageDays = snap.ageDays === null || snap.ageDays === undefined ? null : formatDays(snap.ageDays, locale);
+  facts.push(factCard(locale,
+    tx(locale, 'verdict.lastReset'),
+    formatDateTime(snap.lastResetAt, locale) || tx(locale, 'common.unavailable'),
+    ageDays === null ? tx(locale, 'common.unavailable') : tx(locale, 'verdict.age', { days: ageDays }),
+  ));
+  const wait = snap.wait || {};
+  const waitDays = wait.days === null || wait.days === undefined ? null : formatDays(wait.days, locale);
+  const share = typeof wait.shorter_share === 'number' ? Math.round(wait.shorter_share * 100) : null;
+  facts.push(factCard(locale,
+    tx(locale, 'verdict.waited'),
+    waitDays === null ? tx(locale, 'common.unavailable') : waitDays,
+    share === null ? null : tx(locale, 'verdict.waitNote', {
+      share,
+      median: wait.median_days === null || wait.median_days === undefined ? '—' : formatDays(wait.median_days, locale),
+    }),
+    { unit: waitDays === null ? null : 'days' },
+  ));
+  const window = snap.window;
+  const local = window ? windowRange(window.start_hour, window.end_hour, locale) : null;
+  facts.push(factCard(locale,
+    tx(locale, 'verdict.nextWindow'),
+    local || tx(locale, 'common.unavailable'),
+    window
+      ? tx(locale, 'verdict.windowUtc', {
+          range: utcRangeLabel(window.start_hour, window.end_hour),
+          count: formatNumber(window.count ?? 0, locale),
+          total: formatNumber(window.total ?? snap.resets.length, locale),
+        })
+      : tx(locale, 'verdict.windowNone'),
+  ));
+  return facts;
+}
+
+function verdictBlock(locale, snap) {
+  const confidence = snap.confidence || 'low';
+  const model = snap.model || null;
+  const pending = snap.forecast && snap.forecast.mode === 'pending' ? snap.forecast.pending : null;
+  const pendingBlock = pending
+    ? tag('div', { class: 'verdict-pending' }, [
+        tag('p', {}, esc(tx(locale, 'verdict.pendingNote', {
+          time: formatDateTime(pending.at, locale) || tx(locale, 'common.unavailable'),
+          quote: plain(pending.quote, 120),
+        }))),
+        pending.source_url
+          ? tag('a', { href: pending.source_url, rel: 'noopener nofollow', target: '_blank', class: 'chit' }, esc(tx(locale, 'verdict.pendingLink')))
+          : '',
+      ].join(''))
+    : '';
+  return tag('header', { class: 'verdict', 'aria-labelledby': 'verdict-title' }, [
+    tag('p', { class: 'verdict-eyebrow' }, esc(tx(locale, 'verdict.eyebrow'))),
+    tag('h1', { id: 'verdict-title' }, esc(tx(locale, 'home.title'))),
+    tag('p', { class: 'verdict-answer' }, esc(verdictAnswer(locale, snap))),
     tag('div', { class: 'verdict-grid' }, [
       probabilityCard(locale, snap, 24),
       probabilityCard(locale, snap, 48),
-      factList,
+      tag('dl', { class: 'verdict-facts' }, verdictFacts(locale, snap).join('')),
     ].join('')),
-    tag('p', { class: 'verdict-note' }, esc(label(locale, 'verdictNote')
-      .replace('{n}', String(sample))
-      .replace('{confidence}', confidenceWord(locale, level)))),
+    tag('p', { class: 'verdict-note' }, esc(model
+      ? tx(locale, 'verdict.note', {
+          n: formatNumber(model.interval_sample, locale) ?? '—',
+          level: tx(locale, `verdict.confidence.${confidence}`),
+        })
+      : tx(locale, 'verdict.noteNoSample'))),
+    pendingBlock,
+    tag('p', { class: 'verdict-updated field-hint' }, esc(snap.updatedAt
+      ? tx(locale, 'verdict.updated', { time: formatDateTime(snap.updatedAt, locale) || '—' })
+      : '')),
   ].join(''));
 }
 
 /* --------------------------------------------------------------- overview */
 
+function recentRows(locale, snap) {
+  const chronological = Array.isArray(snap.events) ? snap.events.slice().reverse() : [];
+  const gaps = new Map();
+  for (let index = 1; index < chronological.length; index += 1) {
+    const previous = Date.parse(chronological[index - 1].at ?? '');
+    const current = Date.parse(chronological[index].at ?? '');
+    if (Number.isFinite(previous) && Number.isFinite(current)) gaps.set(chronological[index], (current - previous) / 86_400_000);
+  }
+  return chronological.slice().reverse().slice(0, 6).map((event) => {
+    const gap = gaps.get(event);
+    const url = event.url && /^https?:\/\//.test(event.url) ? event.url : null;
+    return tag('tr', {}, [
+      tag('td', { class: 'table-time' }, esc(formatDateTime(event.at, locale) || tx(locale, 'common.unavailable'))),
+      tag('td', { class: 'num' }, event.kind === 'banked'
+        ? tag('span', { class: 'muted' }, esc(tx(locale, 'home.kindBanked')))
+        : gap === undefined
+          ? tag('span', { class: 'muted' }, '—')
+          : esc(tx(locale, 'common.days', { n: formatDays(gap, locale) }))),
+      tag('td', {}, url
+        ? tag('a', { href: url, rel: 'noopener nofollow', target: '_blank', class: 'table-link' }, esc(`${tx(locale, 'home.sourcePost')} ↗`))
+        : tag('span', { class: 'muted' }, esc(tx(locale, 'home.sourceLedger')))),
+    ].join(''));
+  });
+}
+
 function overviewBlock(locale, snap, origin) {
   const parts = [verdictBlock(locale, snap)];
 
-  // 2. Rhythm preview: three facts, the weekday × hour heatmap, and /rhythm.
+  // 2. Rhythm preview: three figures and the weekday × hour heatmap.
   const cadence = snap.cadence || {};
   const wait = snap.wait || {};
   const rhythmFacts = factGrid([
-    cadence.overall_median_days !== null && cadence.overall_median_days !== undefined
-      ? { label: label(locale, 'rhythmMedian'), value: label(locale, 'days').replace('{n}', String(cadence.overall_median_days)), note: '' }
-      : null,
-    cadence.recent_median_days !== null && cadence.recent_median_days !== undefined
-      ? { label: label(locale, 'rhythmRecent'), value: label(locale, 'days').replace('{n}', String(cadence.recent_median_days)), note: '' }
-      : null,
-    wait.longest_days !== null && wait.longest_days !== undefined
-      ? { label: label(locale, 'rhythmLongest'), value: label(locale, 'days').replace('{n}', String(wait.longest_days)), note: '' }
-      : null,
+    factCard(locale, tx(locale, 'home.medianInterval'),
+      cadence.overall_median_days === null || cadence.overall_median_days === undefined ? '—' : formatDays(cadence.overall_median_days, locale),
+      null, { unit: 'days' }),
+    factCard(locale, tx(locale, 'home.recentMedian'),
+      cadence.recent_median_days === null || cadence.recent_median_days === undefined ? '—' : formatDays(cadence.recent_median_days, locale),
+      null, { unit: 'days' }),
+    factCard(locale, tx(locale, 'home.longestInterval'),
+      wait.longest_days === null || wait.longest_days === undefined ? '—' : formatDays(wait.longest_days, locale),
+      null, { unit: 'days' }),
   ]);
-  parts.push(tag('section', { class: 'leaf', id: 'rhythm-preview' }, [
-    tag('div', { class: 'leaf-head' }, [
-      tag('h2', {}, esc(label(locale, 'rhythmTitle'))),
-      tag('p', { class: 'leaf-note' }, esc(label(locale, 'rhythmNote'))),
+  parts.push(leafSection(locale, {
+    id: 'rhythm-preview',
+    title: tx(locale, 'home.rhythmTitle'),
+    note: tx(locale, 'home.rhythmNote'),
+  }, [
+    tag('div', { class: 'rhythm-preview' }, rhythmFacts + heatmapBlock(locale, snap)),
+    tag('div', { class: 'leaf-foot' }, tag('a', { class: 'chit', href: pageMetaFor(locale, 'rhythm').path }, esc(tx(locale, 'home.viewRhythm')))),
+  ]));
+
+  // 3. Recent records, newest first, with the gap to the previous event.
+  const rows = recentRows(locale, snap);
+  const recent = tag('div', { class: 'table-wrap' }, tag('table', { class: 'data-table recent-table' }, [
+    tag('thead', {}, tag('tr', {}, [
+      tag('th', {}, esc(tx(locale, 'home.colWhen'))),
+      tag('th', {}, esc(tx(locale, 'home.colGap'))),
+      tag('th', {}, esc(tx(locale, 'home.colSource'))),
+    ].join(''))),
+    tag('tbody', {}, rows.join('')),
+  ].join('')));
+  parts.push(leafSection(locale, {
+    title: tx(locale, 'home.recentTitle'),
+    note: tx(locale, 'home.recentNote'),
+  }, [
+    tag('div', {}, rows.length ? recent : tag('p', { class: 'empty' }, esc(tx(locale, 'timeline.empty')))),
+    tag('div', { class: 'leaf-foot' }, tag('a', { class: 'chit', href: pageMetaFor(locale, 'timeline').path }, esc(tx(locale, 'home.allRecords')))),
+  ]));
+
+  // 4. Where the numbers come from.
+  parts.push(leafSection(locale, { title: tx(locale, 'home.methodTitle') }, [
+    tag('p', { class: 'method-body' }, esc(tx(locale, 'home.methodBody'))),
+    tag('div', { class: 'method-links' }, [
+      tag('a', { class: 'chit', href: pageMetaFor(locale, 'status').path }, esc(tx(locale, 'home.methodStatus'))),
+      tag('a', { class: 'chit', href: pageMetaFor(locale, 'rhythm').path }, esc(tx(locale, 'home.methodRhythm'))),
+      tag('a', { class: 'chit', href: locale === 'en' ? '/en/about' : '/about' }, esc(tx(locale, 'home.methodAbout'))),
     ].join('')),
-    rhythmFacts,
-    heatmapBlock(locale, snap),
-    tag('p', { class: 'leaf-foot' }, tag('a', { class: 'chit', href: pageMetaFor(locale, 'rhythm').path }, esc(label(locale, 'viewRhythm')))),
-  ].join('')));
+  ]));
 
-  // 3. The six most recent ledger entries, each with its public source.
-  const recent = Array.isArray(snap.events) ? snap.events.slice(0, 6) : [];
-  parts.push(tag('section', { class: 'leaf', id: 'recent-records' }, [
-    tag('div', { class: 'leaf-head' }, tag('h2', {}, esc(label(locale, 'recentResets')))),
-    recent.length
-      ? tag('ol', { class: 'ssr-rows' }, recent.map((record) => recordRow(locale, record)).join(''))
-      : tag('p', { class: 'ssr-note' }, esc(label(locale, 'empty'))),
-    tag('p', { class: 'leaf-foot' }, tag('a', { class: 'chit', href: pageMetaFor(locale, 'timeline').path }, esc(label(locale, 'allResets')))),
-  ].join('')));
-
-  // 4. Method and data: where the numbers come from, plus links outward.
-  const methodLinks = tag('p', { class: 'ssr-more' }, [
-    tag('a', { href: pageMetaFor(locale, 'status').path }, esc(navLabel(locale, 'status'))),
-    ' · ',
-    tag('a', { href: pageMetaFor(locale, 'rhythm').path }, esc(navLabel(locale, 'rhythm'))),
-    ' · ',
-    tag('a', { href: locale === 'en' ? '/en/about' : '/about' }, esc(locale === 'en' ? 'About' : '关于')),
-  ].join(''));
-  parts.push(tag('section', { class: 'leaf', id: 'method' }, [
-    tag('div', { class: 'leaf-head' }, tag('h2', {}, esc(label(locale, 'methodTitle')))),
-    tag('p', {}, esc(label(locale, 'methodBody'))),
-    methodLinks,
-  ].join('')));
-
-  if (snap.at) {
-    parts.push(
-      tag('p', { class: 'ssr-updated' }, `${label(locale, 'updated')} ${formatDateTime(new Date(snap.at).toISOString(), locale)} ${zoneLabel(locale)}`),
-    );
-  }
   return tag('div', { id: 'ssr', class: 'ssr' }, parts.join(''));
 }
 
@@ -974,117 +1001,150 @@ function rhythmStatsFacts(locale, snap) {
   const stats = snap.rhythm.stats || {};
   const cadence = snap.cadence || {};
   return factGrid([
-    { label: label(locale, 'rhythmRecorded'), value: label(locale, 'rhythmCount').replace('{n}', String(stats.resets ?? snap.resets.length)), note: '' },
-    { label: label(locale, 'rhythmSpan'), value: label(locale, 'rhythmSpanValue').replace('{n}', String(Math.round(stats.span_days ?? 0))), note: '' },
-    { label: label(locale, 'rhythmMedian'), value: label(locale, 'days').replace('{n}', String(stats.median_interval_days ?? '—')), note: '' },
-    cadence.recent_median_days !== null && cadence.recent_median_days !== undefined
-      ? { label: label(locale, 'rhythmRecent'), value: label(locale, 'days').replace('{n}', String(cadence.recent_median_days)), note: '' }
-      : null,
+    factCard(locale, tx(locale, 'rhythm.statsResets'),
+      formatNumber(stats.resets ?? snap.resets.length, locale), null, { unit: 'resets' }),
+    factCard(locale, tx(locale, 'rhythm.statsSpan'),
+      formatNumber(Math.round(stats.span_days || 0), locale), null, { unit: 'days' }),
+    factCard(locale, tx(locale, 'rhythm.statsMedian'),
+      stats.median_interval_days === null || stats.median_interval_days === undefined ? '—' : formatDays(stats.median_interval_days, locale),
+      null, { unit: 'days' }),
+    factCard(locale, tx(locale, 'rhythm.statsRecent'),
+      cadence.recent_median_days === null || cadence.recent_median_days === undefined ? '—' : formatDays(cadence.recent_median_days, locale),
+      null, { unit: 'days' }),
   ]);
+}
+
+function windowList(locale, snap) {
+  const rows = Array.isArray(snap.rhythm.windows) ? snap.rhythm.windows.slice(0, 5) : [];
+  if (!rows.length) return tag('p', { class: 'empty' }, esc(tx(locale, 'verdict.windowNone')));
+  const items = rows.map((window, index) => {
+    const range = utcRangeLabel(window.start_hour, window.end_hour);
+    const local = windowRange(window.start_hour, window.end_hour, locale) ?? '—';
+    const share = typeof window.share === 'number' ? Math.round(window.share * 100) : null;
+    return tag('li', { class: 'window-row' }, [
+      tag('span', { class: 'window-index', 'aria-hidden': 'true' }, String(index + 1)),
+      tag('span', { class: 'window-main' }, [
+        tag('span', { class: 'window-range' }, esc(tx(locale, 'rhythm.windowRow', {
+          range,
+          local,
+          count: formatNumber(window.count ?? 0, locale),
+          share: share === null ? '—' : share,
+        }))),
+        tag('span', { class: 'window-bar', 'aria-hidden': 'true' }, tag('span', {
+          style: `--w:${Math.max(0, Math.min(100, share || 0))}%`,
+        }, '')),
+      ].join('')),
+    ].join(''));
+  });
+  return tag('ol', { class: 'window-list' }, items.join(''));
+}
+
+function intervalTable(locale, snap) {
+  const intervals = Array.isArray(snap.rhythm.intervals) ? snap.rhythm.intervals : [];
+  const rows = intervals.slice(-40).reverse();
+  if (!rows.length) return tag('p', { class: 'empty' }, esc(tx(locale, 'common.unavailable')));
+  return tag('table', { class: 'data-table interval-table', 'aria-label': tx(locale, 'rhythm.distribution') }, [
+    tag('thead', {}, tag('tr', {}, [
+      tag('th', {}, esc(label(locale, 'tableIndex'))),
+      tag('th', {}, esc(label(locale, 'tableResetAt'))),
+      tag('th', { class: 'num' }, esc(label(locale, 'tableGap'))),
+    ].join(''))),
+    tag('tbody', {}, rows.map((row, index) => tag('tr', {}, [
+      tag('td', {}, esc(String(intervals.length - index))),
+      tag('td', {}, tag('time', { datetime: isoStamp(row.at) || '' }, esc(formatDateTime(row.at, locale)))),
+      tag('td', { class: 'num' }, esc(tx(locale, 'common.days', { n: formatDays(row.days, locale) }))),
+    ].join(''))).join('')),
+  ].join(''));
+}
+
+function monthTable(locale, snap) {
+  const months = (Array.isArray(snap.rhythm.months) ? snap.rhythm.months : []).slice(0, 12);
+  if (!months.length) return tag('p', { class: 'empty' }, esc(tx(locale, 'common.unavailable')));
+  return tag('div', { class: 'table-wrap' }, tag('table', { class: 'data-table month-table' }, [
+    tag('thead', {}, tag('tr', {}, [
+      tag('th', {}, esc(tx(locale, 'rhythm.monthCol'))),
+      tag('th', { class: 'num' }, esc(tx(locale, 'rhythm.colResets'))),
+      tag('th', { class: 'num' }, esc(tx(locale, 'rhythm.colBanked'))),
+    ].join(''))),
+    tag('tbody', {}, months.map((entry) => tag('tr', {}, [
+      tag('td', {}, esc(monthLabel(entry.month, locale))),
+      tag('td', { class: 'num' }, esc(formatNumber(entry.resets, locale))),
+      tag('td', { class: 'num' }, esc(formatNumber(entry.banked, locale))),
+    ].join(''))).join('')),
+  ].join('')));
+}
+
+function rhythmParamRows(locale, snap) {
+  const model = snap.model || {};
+  const backtest = snap.backtest || {};
+  const params = (snap.status && snap.status.params) || {};
+  const rows = [];
+  const push = (name, value) => {
+    if (value === null || value === undefined || value === '') return;
+    rows.push([name, String(value)]);
+  };
+  if (model.half_life_days !== undefined) push(tx(locale, 'rhythm.paramHalfLife'), tx(locale, 'rhythm.valueDays', { n: model.half_life_days }));
+  push(tx(locale, 'rhythm.paramShape'), model.shape_k);
+  push(tx(locale, 'rhythm.paramEmpirical'), model.empirical_weight);
+  push(tx(locale, 'rhythm.paramSample'), formatNumber(model.interval_sample, locale));
+  push(tx(locale, 'rhythm.paramEffSample'), model.effective_sample_size === undefined ? null : formatNumber(model.effective_sample_size, locale));
+  if (params.bootstrap_rounds !== undefined) push(tx(locale, 'rhythm.paramBootstrap'), formatNumber(params.bootstrap_rounds, locale));
+  if (params.min_gap_hours !== undefined) push(tx(locale, 'rhythm.paramMinGap'), tx(locale, 'rhythm.valueHours', { n: params.min_gap_hours }));
+  if (backtest.method) push(tx(locale, 'rhythm.paramBacktestMethod'), tx(locale, 'rhythm.methodWalkForward'));
+  if (backtest.brier !== null && backtest.brier !== undefined) {
+    push(tx(locale, 'rhythm.paramBrier'), backtest.brier);
+    push(tx(locale, 'rhythm.paramBaseline'), backtest.baseline_brier);
+  }
+  return rows;
 }
 
 function rhythmBlock(locale, snap) {
   const page = pageMetaFor(locale, 'rhythm');
-  const intervals = Array.isArray(snap.rhythm.intervals) ? snap.rhythm.intervals : [];
-  const rows = intervals.slice(-40).reverse();
-  const intervalTable = rows.length
-    ? tag('table', { class: 'data-table ssr-table interval-table', 'aria-label': label(locale, 'intervalTitle') }, [
-        tag('thead', {}, tag('tr', {}, [
-          tag('th', { scope: 'col' }, esc(label(locale, 'tableIndex'))),
-          tag('th', { scope: 'col' }, esc(label(locale, 'tableResetAt'))),
-          tag('th', { scope: 'col' }, esc(label(locale, 'tableGap'))),
-        ].join(''))),
-        tag('tbody', {}, rows.map((row, index) => tag('tr', {}, [
-          tag('td', {}, esc(String(intervals.length - index))),
-          tag('td', {}, tag('time', { datetime: isoStamp(row.at) || '' }, esc(formatDateTime(row.at, locale)))),
-          tag('td', {}, esc(label(locale, 'days').replace('{n}', String(Math.round(row.days * 10) / 10)))),
-        ].join(''))).join('')),
-      ].join(''))
-    : tag('p', { class: 'ssr-note' }, esc(label(locale, 'insufficient')));
+  const params = rhythmParamRows(locale, snap);
 
-  const windows = topWindows(snap, 5);
-  const windowList = windows.length
-    ? tag('ol', { class: 'window-list' }, windows.map((window) => tag('li', {}, esc(label(locale, 'windowLine')
-        .replace('{range}', utcRangeLabel(window.start_hour, window.end_hour))
-        .replace('{count}', String(window.count))
-        .replace('{share}', String(Math.round((window.share || 0) * 100)))))).join(''))
-    : tag('p', { class: 'ssr-note' }, esc(label(locale, 'insufficient')));
-
-  const months = (Array.isArray(snap.rhythm.months) ? snap.rhythm.months : []).slice(0, 12);
-  const monthTable = months.length
-    ? tag('table', { class: 'data-table ssr-table month-table', 'aria-label': label(locale, 'monthTitle') }, [
-        tag('thead', {}, tag('tr', {}, [
-          tag('th', { scope: 'col' }, esc(label(locale, 'monthCol'))),
-          tag('th', { scope: 'col' }, esc(label(locale, 'monthResets'))),
-          tag('th', { scope: 'col' }, esc(label(locale, 'monthBanked'))),
-        ].join(''))),
-        tag('tbody', {}, months.map((entry) => tag('tr', {}, [
-          tag('td', {}, esc(monthLabel(entry.month, locale))),
-          tag('td', {}, esc(String(entry.resets))),
-          tag('td', {}, esc(String(entry.banked))),
-        ].join(''))).join('')),
-      ].join(''))
-    : tag('p', { class: 'ssr-note' }, esc(label(locale, 'insufficient')));
-
-  const model = snap.model || {};
-  const backtest = snap.backtest || {};
-  const params = (snap.status && snap.status.params) || {};
-  const paramRows = [
-    model.name ? [label(locale, 'paramModel'), `${model.name} ${model.version || ''}`.trim()] : null,
-    model.interval_sample !== undefined ? [label(locale, 'paramSample'), String(model.interval_sample)] : null,
-    model.effective_sample_size !== undefined ? [label(locale, 'paramEffective'), String(model.effective_sample_size)] : null,
-    model.half_life_days !== undefined || params.half_life_days !== undefined
-      ? [label(locale, 'paramHalfLife'), `${model.half_life_days ?? params.half_life_days} ${locale === 'en' ? 'days' : '天'}`]
-      : null,
-    model.shape_k !== undefined ? [label(locale, 'paramShape'), String(model.shape_k)] : null,
-    model.scale_days !== undefined ? [label(locale, 'paramScale'), `${model.scale_days} ${locale === 'en' ? 'days' : '天'}`] : null,
-    model.empirical_weight !== undefined ? [label(locale, 'paramEmpirical'), String(model.empirical_weight)] : null,
-    params.min_gap_hours !== undefined ? [label(locale, 'paramMinGap'), `${params.min_gap_hours} ${locale === 'en' ? 'hours' : '小时'}`] : null,
-    params.bootstrap_rounds !== undefined ? [label(locale, 'paramBootstrap'), `${params.bootstrap_rounds} ${locale === 'en' ? 'rounds' : '轮'}`] : null,
-    backtest.method ? [label(locale, 'paramBacktest'), backtest.method] : null,
-    backtest.sample_size !== undefined ? [label(locale, 'paramBacktestSample'), String(backtest.sample_size)] : null,
-    backtest.brier !== undefined && backtest.brier !== null ? [label(locale, 'paramBrier'), String(backtest.brier)] : null,
-    backtest.baseline_brier !== undefined && backtest.baseline_brier !== null ? [label(locale, 'paramBaseline'), String(backtest.baseline_brier)] : null,
-    backtest.status
-      ? [label(locale, 'paramVerdict'), backtest.brier === null ? label(locale, 'notEnough') : backtest.better_than_baseline ? label(locale, 'beatsBaseline') : label(locale, 'belowBaseline')]
-      : null,
-  ].filter(Boolean);
+  const distribution = tag('div', { class: 'chart-host' }, [
+    tag('p', { class: 'pair-readout' }, esc(tx(locale, 'rhythm.readout'))),
+    intervalTable(locale, snap),
+  ].join(''));
 
   return tag('div', { id: 'ssr', class: 'ssr' }, [
-    tag('div', { class: 'page-head' }, [
-      tag('p', { class: 'ssr-eyebrow' }, esc(navLabel(locale, 'rhythm'))),
-      tag('h1', {}, esc(page.h1)),
-      tag('p', { class: 'lead' }, esc(label(locale, 'rhythmLead'))),
+    tag('header', { class: 'page-head' }, [
+      tag('h1', {}, esc(tx(locale, 'rhythm.h1'))),
+      tag('p', { class: 'lead' }, esc(tx(locale, 'rhythm.lead'))),
     ].join('')),
-    tag('section', { class: 'leaf' }, [
-      tag('div', { class: 'leaf-head' }, tag('h2', {}, esc(label(locale, 'rhythmStats')))),
-      rhythmStatsFacts(locale, snap),
-    ].join('')),
-    tag('section', { class: 'leaf' }, [
-      tag('div', { class: 'leaf-head' }, [
-        tag('h2', {}, esc(label(locale, 'intervalTitle'))),
-        tag('p', { class: 'leaf-note' }, esc(label(locale, 'intervalLead'))),
-      ].join('')),
-      tag('div', { class: 'chart-host', 'data-chart': 'rhythm-intervals', 'aria-hidden': 'true' }, ''),
-      intervalTable,
-      tag('p', { class: 'ssr-note' }, esc(label(locale, 'intervalNote').replace('{n}', String(intervals.length)))),
-    ].join('')),
-    tag('section', { class: 'leaf' }, [
-      tag('div', { class: 'leaf-head' }, tag('h2', {}, esc(label(locale, 'hourTitle')))),
+    leafSection(locale, { title: tx(locale, 'rhythm.overview') }, [tag('div', {}, rhythmStatsFacts(locale, snap))]),
+    leafSection(locale, {
+      title: tx(locale, 'rhythm.distribution'),
+      note: tx(locale, 'rhythm.distributionNote'),
+    }, [distribution]),
+    leafSection(locale, {
+      title: tx(locale, 'rhythm.weekdayTitle'),
+      note: tx(locale, 'rhythm.weekdayNote'),
+    }, [tag('div', {}, [
       heatmapBlock(locale, snap),
-      tag('h3', {}, esc(label(locale, 'windowTitle'))),
-      windowList,
-    ].join('')),
-    tag('section', { class: 'leaf' }, monthTable),
-    tag('section', { class: 'leaf', id: 'rhythm-method' }, [
-      tag('div', { class: 'leaf-head' }, tag('h2', {}, esc(label(locale, 'rhythmMethodTitle')))),
-      tag('p', {}, esc(label(locale, 'rhythmMethod'))),
-      tag('h3', {}, esc(label(locale, 'rhythmParamsTitle'))),
-      metricTable(locale, paramRows),
-      tag('h3', {}, esc(label(locale, 'faqTitle'))),
-      tag('dl', { class: 'ssr-faq' }, label(locale, 'rhythmFaq')
-        .map((item) => tag('dt', {}, esc(item.q)) + tag('dd', {}, esc(item.a))).join('')),
-    ].join('')),
+      tag('h3', { class: 'subhead' }, esc(tx(locale, 'rhythm.windowsTitle'))),
+      tag('p', { class: 'field-hint' }, esc(tx(locale, 'rhythm.windowsNote'))),
+      windowList(locale, snap),
+    ])]),
+    leafSection(locale, {
+      title: tx(locale, 'rhythm.monthTitle'),
+      note: tx(locale, 'rhythm.monthNote'),
+    }, [tag('div', {}, monthTable(locale, snap))]),
+    leafSection(locale, { title: tx(locale, 'rhythm.methodTitle') }, [tag('div', {}, [
+      tag('p', { class: 'method-body' }, esc(tx(locale, 'rhythm.methodBody'))),
+      params.length
+        ? tag('details', { class: 'method-details' }, [
+            tag('summary', {}, esc(tx(locale, 'rhythm.paramsSummary'))),
+            tag('div', { class: 'table-wrap' }, paramTable(params)),
+          ].join(''))
+        : '',
+      tag('h3', { class: 'subhead' }, esc(tx(locale, 'rhythm.faqTitle'))),
+      faqDetails(rhythmFaqItems(locale)),
+      tag('div', { class: 'method-links' }, [
+        tag('a', { class: 'chit', href: pageMetaFor(locale, 'status').path }, esc(tx(locale, 'home.methodStatus'))),
+        tag('a', { class: 'chit', href: pageMetaFor(locale, 'timeline').path }, esc(tx(locale, 'home.allRecords'))),
+      ].join('')),
+    ])]),
   ].join(''));
 }
 
@@ -1133,7 +1193,7 @@ function rhythmDocument({ origin, pathname }) {
         },
         {
           '@type': 'FAQPage',
-          mainEntity: label(locale, 'rhythmFaq').map((item) => ({
+          mainEntity: rhythmFaqItems(locale).map((item) => ({
             '@type': 'Question',
             name: item.q,
             acceptedAnswer: { '@type': 'Answer', text: item.a },
@@ -1218,15 +1278,9 @@ function timelineBlock(locale, snap) {
 function checkDetail(locale, check) {
   const detail = check.detail || '';
   if (check.name === 'backtest') {
-    if (locale === 'en') {
-      if (detail === 'beats-baseline') return 'beats baseline';
-      if (detail === 'experimental') return 'experimental';
-      if (detail === 'insufficient-data') return 'not enough data';
-    } else {
-      if (detail === 'beats-baseline') return '优于基线';
-      if (detail === 'experimental') return '实验性';
-      if (detail === 'insufficient-data') return '样本不足';
-    }
+    if (detail === 'beats-baseline') return tx(locale, 'datastatus.beats');
+    if (detail === 'experimental') return tx(locale, 'datastatus.notBeats');
+    if (detail === 'insufficient-data') return tx(locale, 'datastatus.insufficient');
     return detail;
   }
   if (locale === 'zh') return detail;
@@ -1234,18 +1288,57 @@ function checkDetail(locale, check) {
   if (events) return `${events[1]} events`;
   const intervals = /(\d+)\s*个完整间隔/.exec(detail);
   if (intervals) return `${intervals[1]} completed intervals`;
-  if (detail === '事件按时间正序') return 'events in chronological order';
+  if (detail === '事件按时间正序') return 'in chronological order';
   return /[\u4e00-\u9fff]/.test(detail) ? '' : detail;
 }
 
+/** Weekday × hour grid, structurally identical to `_parts.js`. */
+function heatmapBlock(locale, snap) {
+  const grid = Array.isArray(snap.rhythm && snap.rhythm.heatmap) ? snap.rhythm.heatmap : [];
+  if (!grid.length) return '';
+  const stored = snap.rhythm.weekday_labels && snap.rhythm.weekday_labels[locale === 'en' ? 'en' : 'zh'];
+  const days = Array.isArray(stored) && stored.length === 7 ? stored : label(locale, 'weekdays');
+  const total = snap.rhythm.stats && snap.rhythm.stats.resets ? snap.rhythm.stats.resets : snap.resets.length;
+  const max = grid.flat().reduce((peak, value) => Math.max(peak, Number(value) || 0), 0);
+  const head = [tag('span', { class: 'heatmap-corner', 'aria-hidden': 'true' }, '')];
+  for (let hour = 0; hour < 24; hour += 1) {
+    head.push(tag('span', { class: 'heatmap-hour', 'aria-hidden': 'true' }, String(hour).padStart(2, '0')));
+  }
+  const cells = [];
+  for (let day = 0; day < 7; day += 1) {
+    cells.push(tag('span', { class: 'heatmap-day' }, esc(days[day] || '')));
+    for (let hour = 0; hour < 24; hour += 1) {
+      const count = Number(grid[day] && grid[day][hour]) || 0;
+      const level = count === 0 || max === 0 ? 0 : count / max <= 0.25 ? 1 : count / max <= 0.5 ? 2 : count / max <= 0.75 ? 3 : 4;
+      cells.push(tag('span', {
+        class: 'heatmap-cell',
+        'data-level': String(level),
+        title: tx(locale, 'heatmap.cellTitle', { day: days[day] || '', hour: String(hour).padStart(2, '0'), count }),
+      }, ''));
+    }
+  }
+  const swatches = [0, 1, 2, 3, 4].map((level) => tag('span', { class: 'heatmap-swatch', 'data-level': String(level) }, '')).join('');
+  return tag('div', {
+    class: 'heatmap',
+    role: 'img',
+    'aria-label': tx(locale, 'heatmap.aria', { n: formatNumber(total, locale) ?? String(total) }),
+  }, [
+    tag('div', { class: 'heatmap-grid' }, head.join('') + cells.join('')),
+    tag('div', { class: 'heatmap-foot' }, [
+      tag('p', { class: 'heatmap-legend' }, esc(tx(locale, 'heatmap.legend'))),
+      tag('p', { class: 'heatmap-scale', 'aria-hidden': 'true' }, [
+        tag('span', { class: 'heatmap-scale-label' }, esc(tx(locale, 'heatmap.scaleLow'))),
+        swatches,
+        tag('span', { class: 'heatmap-scale-label' }, esc(tx(locale, 'heatmap.scaleHigh'))),
+      ].join('')),
+    ].join('')),
+  ].join(''));
+}
 
-/** `data/meta.json` labels are Chinese; keep the English page free of them. */
-function sourceLabel(locale, source) {
-  const text = source.label || '';
-  if (locale !== 'en') return text;
-  const url = String(source.url || '');
-  if (/x\.com/i.test(url)) return 'Tibo (@thsottiaux) on X';
-  return /[\u4e00-\u9fff]/.test(text) ? 'Public ledger source' : text;
+/* ------------------------------------------------------------------ status */
+
+function checkStateText(locale, check) {
+  return check.ok ? tx(locale, 'datastatus.checkOk') : tx(locale, 'datastatus.checkFail');
 }
 
 function statusBlock(locale, snap) {
@@ -1258,147 +1351,166 @@ function statusBlock(locale, snap) {
   const backtest = state.backtest || {};
   const gaps = Array.isArray(state.gaps) ? state.gaps : [];
   const checks = Array.isArray(state.checks) ? state.checks : [];
-  const rawSources = Array.isArray(snap.meta && snap.meta.sources) ? snap.meta.sources : [];
+
+  const rawSources = Array.isArray(state.sources) && state.sources.length
+    ? state.sources
+    : Array.isArray(snap.meta && snap.meta.sources) ? snap.meta.sources : [];
   const seenSources = new Set();
   const sources = rawSources.filter((source) => {
-    const key = source.url || source.label;
+    const key = `${source.label || ''}|${source.url || ''}`;
     if (seenSources.has(key)) return false;
     seenSources.add(key);
     return true;
   });
-  const hours = (value) => label(locale, 'hours').replace('{n}', String(value));
-  const countValue = label(locale, 'coverCount');
 
+  const level = freshness.level === 'fresh' || freshness.level === 'stale' ? freshness.level : 'unknown';
+  const tone = level === 'fresh' ? 'ok' : level === 'stale' ? 'warn' : 'plain';
   const freshnessFacts = factGrid([
-    {
-      label: label(locale, 'freshUpdated'),
-      value: state.updated_at ? formatDateTime(state.updated_at, locale) : '—',
-      note: zoneLabel(locale),
-    },
-    freshness.age_hours !== null && freshness.age_hours !== undefined
-      ? { label: label(locale, 'freshAge'), value: hours(freshness.age_hours), note: '' }
-      : null,
-    {
-      label: label(locale, 'freshState'),
-      value: freshness.level === 'fresh' ? label(locale, 'fresh') : freshness.level === 'stale' ? label(locale, 'stale') : label(locale, 'unknownState'),
-      note: freshness.threshold_hours ? label(locale, 'freshThreshold').replace('{n}', String(freshness.threshold_hours)) : '',
-    },
-    dataset.total !== undefined ? { label: label(locale, 'freshTotal'), value: String(dataset.total), note: '' } : null,
+    factCard(locale,
+      tx(locale, 'datastatus.updated'),
+      formatDateTime(state.updated_at, locale) || tx(locale, 'common.unavailable'),
+      state.updated_at ? tx(locale, 'datastatus.age', { when: relativeTime(state.updated_at, locale) }) : null,
+    ),
+    factCard(locale,
+      tx(locale, 'datastatus.level'),
+      tag('span', { class: 'mark', 'data-tone': tone, 'data-shape': 'rule' }, esc(tx(locale, `datastatus.level.${level}`))),
+      freshness.threshold_hours !== undefined ? tx(locale, 'datastatus.threshold', { n: freshness.threshold_hours }) : null,
+      { html: true },
+    ),
+    factCard(locale, tx(locale, 'datastatus.events'), formatNumber(dataset.total, locale) ?? '—'),
   ]);
 
   const coverageFacts = factGrid([
-    dataset.first_at ? { label: label(locale, 'coverFirst'), value: formatDay(dataset.first_at, locale), note: zoneLabel(locale) } : null,
-    dataset.last_reset_at ? { label: label(locale, 'coverLast'), value: formatDateTime(dataset.last_reset_at, locale), note: zoneLabel(locale) } : null,
-    dataset.reset !== undefined ? { label: label(locale, 'coverResets'), value: countValue.replace('{n}', String(dataset.reset)), note: '' } : null,
-    dataset.banked !== undefined ? { label: label(locale, 'coverBanked'), value: countValue.replace('{n}', String(dataset.banked)), note: '' } : null,
-    dataset.span_days !== undefined ? { label: label(locale, 'coverSpan'), value: label(locale, 'coverSpanValue').replace('{n}', String(Math.round(dataset.span_days))), note: '' } : null,
+    factCard(locale, tx(locale, 'datastatus.first'), formatFullDate(dataset.first_at, locale) || tx(locale, 'common.unavailable')),
+    factCard(locale, tx(locale, 'datastatus.lastReset'), formatDateTime(dataset.last_reset_at, locale) || tx(locale, 'common.unavailable')),
+    factCard(locale, tx(locale, 'datastatus.resets'), formatNumber(dataset.reset, locale) ?? '—'),
+    factCard(locale, tx(locale, 'datastatus.banked'), formatNumber(dataset.banked, locale) ?? '—'),
+    factCard(locale, tx(locale, 'datastatus.span'), formatNumber(Math.round(dataset.span_days || 0), locale) ?? '—', null, { unit: 'days' }),
   ]);
 
   const gapTable = gaps.length
-    ? tag('table', { class: 'data-table ssr-table gap-table', 'aria-label': label(locale, 'gapTitle') }, [
+    ? tag('div', { class: 'table-wrap' }, tag('table', { class: 'data-table gap-table' }, [
         tag('thead', {}, tag('tr', {}, [
-          tag('th', { scope: 'col' }, esc(label(locale, 'gapFrom'))),
-          tag('th', { scope: 'col' }, esc(label(locale, 'gapTo'))),
-          tag('th', { scope: 'col' }, esc(label(locale, 'gapDays'))),
+          tag('th', {}, esc(tx(locale, 'datastatus.gapFrom'))),
+          tag('th', {}, esc(tx(locale, 'datastatus.gapTo'))),
+          tag('th', { class: 'num' }, esc(tx(locale, 'datastatus.gapDays'))),
         ].join(''))),
         tag('tbody', {}, gaps.map((gap) => tag('tr', {}, [
-          tag('td', {}, esc(gap.from)),
-          tag('td', {}, esc(gap.to)),
-          tag('td', {}, esc(label(locale, 'gapDaysValue').replace('{n}', String(gap.days)))),
+          tag('td', {}, esc(formatFullDate(gap.from, locale) || gap.from || '—')),
+          tag('td', {}, esc(formatFullDate(gap.to, locale) || gap.to || '—')),
+          tag('td', { class: 'num' }, esc(gap.days === null || gap.days === undefined
+            ? '—'
+            : `${formatDays(gap.days, locale)} ${locale === 'en' ? 'days' : '天'}`)),
         ].join(''))).join('')),
-      ].join(''))
-    : tag('p', { class: 'ssr-note' }, esc(label(locale, 'gapNone')));
+      ].join('')))
+    : tag('p', { class: 'note' }, esc(tx(locale, 'datastatus.noGaps')));
 
   const checkList = checks.length
-    ? tag('ul', { class: 'check-list' }, checks.map((check) => tag('li', { class: `check ${check.ok ? 'check--ok' : 'check--bad'}` }, [
-        tag('span', { class: 'check-name' }, esc((label(locale, 'checkNames') || {})[check.name] || check.name)),
-        tag('span', { class: 'check-state' }, esc(check.ok ? label(locale, 'checkPass') : label(locale, 'checkFail'))),
-        tag('span', { class: 'check-detail' }, esc(checkDetail(locale, check))),
-      ].join(''))).join(''))
-    : tag('p', { class: 'ssr-note' }, esc(label(locale, 'empty')));
+    ? tag('ul', { class: 'check-list' }, checks.map((check) => {
+        const names = label(locale, 'checkNames') || {};
+        const key = `datastatus.check.${check.name}`;
+        const fallback = tx(locale, key);
+        const name = fallback === key ? names[check.name] || check.name : fallback;
+        return tag('li', {
+          class: `check ${check.ok ? 'check--ok' : 'check--bad'}`,
+          'data-ok': String(check.ok),
+        }, [
+          tag('span', { class: 'check-name' }, esc(name)),
+          tag('span', { class: 'check-state' }, esc(checkStateText(locale, check))),
+          tag('span', { class: 'check-detail' }, esc(checkDetail(locale, check))),
+        ].join(''));
+      }).join(''))
+    : tag('p', { class: 'empty' }, esc(tx(locale, 'common.unavailable')));
 
-  const paramRows = [
-    model.name ? [label(locale, 'paramModel'), `${model.name} ${model.version || ''}`.trim()] : null,
-    model.interval_sample !== undefined ? [label(locale, 'paramSample'), String(model.interval_sample)] : null,
-    model.effective_sample_size !== undefined ? [label(locale, 'paramEffective'), String(model.effective_sample_size)] : null,
-    params.half_life_days !== undefined || model.half_life_days !== undefined
-      ? [label(locale, 'paramHalfLife'), `${model.half_life_days ?? params.half_life_days} ${locale === 'en' ? 'days' : '天'}`]
-      : null,
-    model.shape_k !== undefined ? [label(locale, 'paramShape'), String(model.shape_k)] : null,
-    model.scale_days !== undefined ? [label(locale, 'paramScale'), `${model.scale_days} ${locale === 'en' ? 'days' : '天'}`] : null,
-    model.empirical_weight !== undefined ? [label(locale, 'paramEmpirical'), String(model.empirical_weight)] : null,
-    params.empirical_blend !== undefined ? [label(locale, 'paramEmpiricalBlend'), String(params.empirical_blend)] : null,
-    params.min_gap_hours !== undefined ? [label(locale, 'paramMinGap'), `${params.min_gap_hours} ${locale === 'en' ? 'hours' : '小时'}`] : null,
-    params.bootstrap_rounds !== undefined ? [label(locale, 'paramBootstrap'), `${params.bootstrap_rounds} ${locale === 'en' ? 'rounds' : '轮'}`] : null,
-    backtest.method ? [label(locale, 'paramBacktest'), backtest.method] : null,
-    backtest.sample_size !== undefined ? [label(locale, 'paramBacktestSample'), String(backtest.sample_size)] : null,
-    backtest.brier !== undefined && backtest.brier !== null ? [label(locale, 'paramBrier'), String(backtest.brier)] : null,
-    backtest.baseline_brier !== undefined && backtest.baseline_brier !== null ? [label(locale, 'paramBaseline'), String(backtest.baseline_brier)] : null,
-    backtest.brier !== null && backtest.brier !== undefined
-      ? [label(locale, 'paramVerdict'), backtest.better_than_baseline ? label(locale, 'beatsBaseline') : label(locale, 'belowBaseline')]
-      : null,
-  ].filter(Boolean);
+  const paramRows = [];
+  const pushParam = (name, value) => {
+    if (value === null || value === undefined || value === '') return;
+    paramRows.push([name, String(value)]);
+  };
+  if (model.name) pushParam(tx(locale, 'datastatus.modelName'), `${model.name} ${model.version || ''}`.trim());
+  pushParam(tx(locale, 'rhythm.paramHalfLife'), model.half_life_days === undefined ? null : tx(locale, 'rhythm.valueDays', { n: model.half_life_days }));
+  pushParam(tx(locale, 'rhythm.paramShape'), model.shape_k);
+  pushParam(tx(locale, 'rhythm.paramEmpirical'), model.empirical_weight);
+  pushParam(tx(locale, 'rhythm.paramSample'), model.interval_sample);
+  pushParam(tx(locale, 'rhythm.paramEffSample'), model.effective_sample_size);
+  if (params.min_gap_hours !== undefined) pushParam(tx(locale, 'rhythm.paramMinGap'), tx(locale, 'rhythm.valueHours', { n: params.min_gap_hours }));
+  if (params.empirical_blend !== undefined) pushParam(tx(locale, 'datastatus.empiricalBlend'), params.empirical_blend);
+  if (params.bootstrap_rounds !== undefined) pushParam(tx(locale, 'rhythm.paramBootstrap'), params.bootstrap_rounds);
+  if (params.gap_days !== undefined) pushParam(tx(locale, 'datastatus.gapThreshold'), tx(locale, 'rhythm.valueDays', { n: params.gap_days }));
+  if (params.stale_hours !== undefined) pushParam(tx(locale, 'datastatus.staleHours'), tx(locale, 'rhythm.valueHours', { n: params.stale_hours }));
+  if (backtest.method) pushParam(tx(locale, 'rhythm.paramBacktestMethod'), tx(locale, 'rhythm.methodWalkForward'));
+
+  const backtestFacts = backtest.brier === null || backtest.brier === undefined
+    ? tag('p', { class: 'note' }, esc(tx(locale, 'datastatus.insufficient')))
+    : factGrid([
+        factCard(locale, tx(locale, 'datastatus.brier'), formatNumber(backtest.brier, locale) ?? '—', backtest.method || null),
+        factCard(locale, tx(locale, 'datastatus.baseline'), formatNumber(backtest.baseline_brier, locale) ?? '—',
+          backtest.better_than_baseline ? tx(locale, 'datastatus.beats') : tx(locale, 'datastatus.notBeats')),
+        factCard(locale, tx(locale, 'rhythm.paramSample'), formatNumber(backtest.sample_size, locale) ?? '—'),
+      ], 'factgrid backtest-facts');
 
   const sourceList = sources.length
-    ? tag('ul', { class: 'ssr-sources' }, sources.map((source) => tag('li', {},
-        tag('a', { href: source.url, rel: 'noopener nofollow', target: '_blank' }, esc(sourceLabel(locale, source))))).join(''))
-    : tag('p', { class: 'ssr-note' }, esc(label(locale, 'empty')));
+    ? tag('ul', { class: 'source-list' }, sources.map((source) => {
+        const url = source.url && /^https?:\/\//.test(source.url) ? source.url : null;
+        return tag('li', {}, [
+          tag('span', { class: 'source-label' }, esc(sourceLabel(locale, source))),
+          url
+            ? tag('a', { href: url, rel: 'noopener nofollow', target: '_blank', class: 'table-link' }, esc(`${tx(locale, 'datastatus.openSource')} ↗`))
+            : '',
+        ].join(''));
+      }).join(''))
+    : tag('p', { class: 'empty' }, esc(tx(locale, 'common.unavailable')));
 
   return tag('div', { id: 'ssr', class: 'ssr' }, [
-    tag('div', { class: 'page-head' }, [
-      tag('p', { class: 'ssr-eyebrow' }, esc(navLabel(locale, 'status'))),
-      tag('h1', {}, esc(page.h1)),
-      tag('p', { class: 'lead' }, esc(label(locale, 'dataStatusLead'))),
+    tag('header', { class: 'page-head' }, [
+      tag('h1', {}, esc(tx(locale, 'datastatus.h1'))),
+      tag('p', { class: 'lead' }, esc(tx(locale, 'datastatus.lead'))),
     ].join('')),
-    tag('section', { class: 'leaf' }, [
-      tag('div', { class: 'leaf-head' }, tag('h2', {}, esc(label(locale, 'freshTitle')))),
-      freshnessFacts,
-    ].join('')),
-    tag('section', { class: 'leaf' }, [
-      tag('div', { class: 'leaf-head' }, tag('h2', {}, esc(label(locale, 'coverTitle')))),
-      coverageFacts,
-    ].join('')),
-    tag('section', { class: 'leaf' }, [
-      tag('div', { class: 'leaf-head' }, tag('h2', {}, esc(label(locale, 'gapTitle')))),
-      gapTable,
-      tag('p', { class: 'ssr-note' }, esc(label(locale, 'gapNote'))),
-    ].join('')),
-    tag('section', { class: 'leaf' }, [
-      tag('div', { class: 'leaf-head' }, tag('h2', {}, esc(label(locale, 'checkTitle')))),
-      checkList,
-    ].join('')),
-    tag('section', { class: 'leaf' }, [
-      tag('div', { class: 'leaf-head' }, tag('h2', {}, esc(label(locale, 'modelTitle')))),
-      metricTable(locale, paramRows),
-    ].join('')),
-    tag('section', { class: 'leaf' }, [
-      tag('div', { class: 'leaf-head' }, tag('h2', {}, esc(label(locale, 'sourceTitle')))),
+    leafSection(locale, { title: tx(locale, 'datastatus.freshness') }, [tag('div', {}, freshnessFacts)]),
+    leafSection(locale, { title: tx(locale, 'datastatus.coverage') }, [tag('div', {}, coverageFacts)]),
+    leafSection(locale, { title: tx(locale, 'datastatus.gaps'), note: tx(locale, 'datastatus.gapsNote') }, [tag('div', {}, gapTable)]),
+    leafSection(locale, { title: tx(locale, 'datastatus.checks') }, [tag('div', {}, checkList)]),
+    leafSection(locale, { title: tx(locale, 'datastatus.model') }, [tag('div', {}, [
+      tag('p', { class: 'method-body' }, esc(tx(locale, 'datastatus.modelNote'))),
+      paramRows.length
+        ? tag('details', { class: 'method-details' }, [
+            tag('summary', {}, esc(tx(locale, 'rhythm.paramsSummary'))),
+            tag('div', { class: 'table-wrap' }, paramTable(paramRows)),
+          ].join(''))
+        : '',
+      backtestFacts,
+    ])]),
+    leafSection(locale, { title: tx(locale, 'datastatus.sources') }, [tag('div', {}, [
       sourceList,
-      tag('p', { class: 'ssr-note' }, esc(label(locale, 'sourceNote'))),
-      snap.updatedAt ? tag('p', { class: 'ssr-updated' }, `${label(locale, 'statusUpdatedNote')} ${formatDateTime(snap.updatedAt, locale)} ${zoneLabel(locale)}`) : '',
-    ].join('')),
+      tag('p', { class: 'field-hint' }, esc(tx(locale, 'datastatus.sourceNote'))),
+    ])]),
   ].join(''));
 }
 
+/* ------------------------------------------------------------------ vigil */
+
 function vigilBlock(locale, snap) {
-  const meta = routeMetaFor(locale, 'vigil');
-  const cadence = [];
-  if (snap.lastResetAt) {
-    cadence.push(statCard(label(locale, 'lastResetAt'), formatDateTime(snap.lastResetAt, locale), zoneLabel(locale)));
-  }
-  if (snap.typicalDays !== null) {
-    cadence.push(statCard(label(locale, 'typicalGap'), label(locale, 'days').replace('{n}', String(Math.round(snap.typicalDays * 10) / 10)), ''));
-  }
-  const faq = label(locale, 'faq');
+  const facts = factGrid([
+    factCard(locale,
+      tx(locale, 'verdict.lastReset'),
+      formatDateTime(snap.lastResetAt, locale) || tx(locale, 'common.unavailable'),
+      zoneLabel(locale),
+    ),
+    snap.wait && snap.wait.median_days !== null && snap.wait.median_days !== undefined
+      ? factCard(locale, tx(locale, 'home.medianInterval'), formatDays(snap.wait.median_days, locale), null, { unit: 'days' })
+      : null,
+  ]);
   return tag('div', { id: 'ssr', class: 'ssr' }, [
-    tag('p', { class: 'ssr-eyebrow' }, esc(navLabel(locale, 'vigil'))),
-    tag('h1', {}, esc(meta.h1)),
-    tag('p', { class: 'ssr-lead' }, esc(meta.lead)),
-    cadence.length ? tag('div', { class: 'ssr-stats' }, cadence.join('')) : '',
-    tag('h2', {}, esc(tx(locale, 'vigil.sleepTitle'))),
-    tag('p', {}, esc(tx(locale, 'vigil.sleepNote'))),
-    tag('h2', {}, esc(label(locale, 'faqTitle'))),
-    tag('dl', { class: 'ssr-faq' }, faq.map((item) => tag('dt', {}, esc(item.q)) + tag('dd', {}, esc(item.a))).join('')),
+    tag('header', { class: 'page-head' }, [
+      tag('h1', {}, esc(tx(locale, 'vigil.h1'))),
+      tag('p', { class: 'lead' }, esc(tx(locale, 'vigil.lede'))),
+    ].join('')),
+    leafSection(locale, { title: tx(locale, 'vigil.sleepTitle'), note: tx(locale, 'vigil.sleepNote') }, [
+      facts,
+      tag('p', { class: 'field-hint' }, esc(`${tx(locale, 'vigil.sleepLegend')} · ${tx(locale, 'vigil.sleepLegendQuiet')}`)),
+      tag('p', { class: 'field-hint' }, esc(tx(locale, 'vigil.sleepFooter'))),
+    ]),
+    leafSection(locale, { title: tx(locale, 'vigil.faq') }, [faqDetails(faqItems(locale))]),
   ].join(''));
 }
 
@@ -1519,7 +1631,7 @@ function documentFor({ origin, pathname }) {
     vigil: () => [
       {
         '@type': 'FAQPage',
-        mainEntity: label(locale, 'faq').map((item) => ({
+        mainEntity: faqItems(locale).map((item) => ({
           '@type': 'Question',
           name: item.q,
           acceptedAnswer: { '@type': 'Answer', text: item.a },
@@ -1931,87 +2043,83 @@ const PLAN = {
     path: '/plan',
     title: 'Codex 28 天计划复盘：Day 1–28 已结束的完整记录',
     description:
-      'Tibo 的 Codex 28 天更新计划已经结束：Day 1–28 的完整复盘表，哪几天是重置、哪几天是产品更新、哪几天没有公开记录，以及活动结束后看什么。',
+      'Tibo 的 Codex 28 天更新计划已经结束：Day 1–28 的完整复盘表，哪几天是重置、哪几天是产品更新、哪几天没有公开记录，以及活动结束后该看哪里。',
     h1: 'Codex 28 天计划复盘：Day 1–28',
-    lead: '2026 年 10 月 5 日到 11 月 1 日，Tibo 连续 28 天发布更新或重置。活动已经结束，这一页冻结成复盘：哪几天是重置、哪几天是产品更新、哪几天没有公开记录。',
+    lead: '2026 年 10 月 5 日到 11 月 1 日，Tibo 连续 28 天发布更新或重置。活动已经结束，这一页就冻结成复盘：哪几天是重置、哪几天是产品更新、哪几天我们没找到公开记录。',
     badge: '已结束 · 2026-11-01',
     day: 'Day',
     date: '日期（PT）',
     what: '当天内容',
-    status: '状态',
-    recorded: '已收录',
     missing: '无公开记录',
     reset: '重置',
     update: '产品更新',
     banked: '备用额度',
     stats: [
-      ['活动窗口', '{start} – {end}'],
-      ['有记录', '{n} / 28 天'],
+      ['活动时间', '{start} – {end}'],
+      ['有内容的天数', '{n} / 28 天'],
       ['其中重置', '{n} 次'],
     ],
-    afterTitle: '结束后看什么',
-    afterBody: '活动结束后不再有每日更新，站点改为持续跟踪重置节奏：',
-    afterRhythm: '重置节奏：间隔与高频窗口',
+    afterTitle: '之后看哪里',
+    afterBody: '活动结束后不再有每日更新；想看下一次重置大概什么时候来，去这两页：',
+    afterRhythm: '重置节奏：间隔与最容易重置的时段',
     afterTimeline: '重置记录：完整时间线',
-    faqTitle: '关于这个计划',
+    faqTitle: '关于这次复盘',
     faq: [
       {
         q: '这个 28 天计划是什么？',
-        a: 'Tibo 在 2026 年 10 月初宣布，用 28 天每天发布一次 Codex 更新或额度重置，作为一段连续的发布节奏。活动从 10 月 5 日持续到 11 月 1 日，Day 1–28 按美国太平洋时间编号，不随访问者时区移动。',
+        a: 'Tibo 在 2026 年 10 月初宣布，用 28 天每天发一次 Codex 更新或额度重置。活动从 10 月 5 日持续到 11 月 1 日，Day 1–28 按美国太平洋时间编号，不随访问者时区移动。',
       },
       {
-        q: '之后还会有每日更新吗？',
-        a: '不会。28 天活动已经在 2026 年 11 月 1 日结束，这一页冻结为复盘，不再逐日追加。站点现在改为持续跟踪重置节奏：间隔分布、高频窗口和未来 24 / 48 小时概率都在重置节奏页与概览页上。',
+        q: '之后还有每日更新吗？',
+        a: '没有了。28 天活动已经在 2026 年 11 月 1 日结束，这一页只作为复盘保留。站点现在持续跟踪重置节奏，想看下一次大概什么时候来，去重置节奏页。',
       },
       {
         q: '为什么有的天没有内容？',
-        a: '只收录有公开来源的记录。没有公开来源的日子保持「无公开记录」，不推断也不填补。',
+        a: '我们只收录有公开来源的记录。没找到公开来源的日子就写「无公开记录」，不猜也不补。',
       },
     ],
-    note: '活动日按 Tibo 的每日编号；表格中的事件时间为公告时间。台账只收公开可追溯的记录。',
+    note: '活动日按 Tibo 的编号；表里的时间是公告时间。只收公开可追溯的记录。',
   },
   en: {
     path: '/en/plan',
     title: 'Codex 28-Day Plan Retrospective: Days 1–28, Complete Record',
     description:
-      'The Codex 28-day run announced by Tibo is over. A full Day 1–28 retrospective: which days were resets, which were product updates, which had no public record, and where to look next.',
+      'The Codex 28-day run announced by Tibo is over. A day-by-day retrospective of Day 1–28: which days were resets, which were product updates, which have no public record, and where to look next.',
     h1: 'The Codex 28-day plan: a retrospective',
-    lead: 'From 5 October to 1 November 2026, Tibo shipped something every day for 28 days. The run is over; this page is frozen as a retrospective: which days were resets, which were product updates, and which have no public record.',
+    lead: 'From 5 October to 1 November 2026, Tibo shipped something every day for 28 days. The run is over, so this page is frozen as a retrospective: which days were resets, which were product updates, and which have no public record.',
     badge: 'Ended · 2026-11-01',
     day: 'Day',
     date: 'Date (PT)',
     what: 'What landed',
-    status: 'State',
-    recorded: 'Recorded',
     missing: 'No public record',
     reset: 'Reset',
     update: 'Product update',
     banked: 'Banked',
     stats: [
-      ['Window', '{start} – {end}'],
-      ['Recorded', '{n} / 28 days'],
+      ['Run window', '{start} – {end}'],
+      ['Days with a record', '{n} / 28 days'],
       ['Of which resets', '{n}'],
     ],
     afterTitle: 'Where to look now',
-    afterBody: 'The day-by-day run is over, so the site now tracks the reset rhythm continuously:',
-    afterRhythm: 'Reset rhythm: intervals and windows',
+    afterBody: 'There are no daily updates any more. To see when the next reset is likely, start here:',
+    afterRhythm: 'Reset rhythm: gaps and the busiest hours',
     afterTimeline: 'Reset history: the full timeline',
-    faqTitle: 'About this run',
+    faqTitle: 'About this retrospective',
     faq: [
       {
         q: 'What was the Codex 28-day plan?',
-        a: 'In early October 2026 Tibo announced a run of 28 consecutive days of shipping, each day numbered Day 1 through Day 28. The run went from 5 October to 1 November and is numbered in Pacific Time, so it never shifts with the visitor’s timezone.',
+        a: 'In early October 2026 Tibo announced a run of 28 consecutive days of shipping, one Codex update or quota reset a day. It ran from 5 October to 1 November 2026, numbered Day 1–28 in Pacific Time so it never shifts with the visitor’s timezone.',
       },
       {
-        q: 'Will there still be daily updates?',
-        a: 'No. The 28-day run ended on 1 November 2026 and this page is frozen as a retrospective; nothing is appended to it any more. The site now tracks the reset rhythm continuously — intervals, high-frequency windows and the 24h/48h probabilities live on the rhythm page and the overview.',
+        q: 'Are there still daily updates?',
+        a: 'No. The 28-day run ended on 1 November 2026 and this page is kept as a retrospective only. The site now tracks the reset rhythm continuously — the rhythm page is where to look for the next likely window.',
       },
       {
-        q: 'Why are some days empty?',
-        a: 'Only days with a public source are recorded. A day without a public source stays “no public record”; nothing is inferred or filled in.',
+        q: 'Why do some days have nothing?',
+        a: 'Only days with a public source are recorded. A day without a public source says “no public record”; nothing is guessed or filled in.',
       },
     ],
-    note: 'Activity days follow Tibo’s own numbering; event times above are announcement times. The ledger only keeps public, traceable records.',
+    note: 'Activity days follow Tibo’s own numbering; times above are announcement times. Only public, traceable records are kept.',
   },
 };
 
@@ -2054,7 +2162,7 @@ function planRows(locale) {
     if (!day) continue;
     if (event.type !== 'reset' && event.type !== 'credits') continue;
     const kind = event.type === 'reset' ? (event.pending ? 'pending' : 'reset') : 'banked';
-    push(day, { kind, text: event.summary || '', url: event.url || null }, `event:${event.at}:${kind}`);
+    push(day, { kind, text: '', url: event.url || null }, `event:${event.at}:${kind}`);
   }
   for (const list of byDay.values()) list.sort((a, b) => (a.kind === 'update' ? 1 : 0) - (b.kind === 'update' ? 1 : 0));
 
@@ -2075,10 +2183,11 @@ function planDocument({ origin, pathname }) {
   const locale = pathname.startsWith('/en/') ? 'en' : 'zh';
   const copy = PLAN[locale];
   const { total, startDate, endDate, dateOfDay, byDay, recordedDays, resetCount } = planRows(locale);
+  const sourceLinkText = `${tx(locale, 'datastatus.openSource')} ↗`;
 
   const kindOf = (item) => {
     if (item.kind === 'reset') return copy.reset;
-    if (item.kind === 'pending') return `${copy.reset}（${label(locale, 'pending')}）`;
+    if (item.kind === 'pending') return copy.reset;
     if (item.kind === 'banked') return copy.banked;
     return copy.update;
   };
@@ -2086,40 +2195,37 @@ function planDocument({ origin, pathname }) {
   const rows = [];
   for (let index = 1; index <= total; index += 1) {
     const date = dateOfDay(index);
-    const items = (byDay.get(index) || []).slice(0, 2);
-    const state = items.length ? copy.recorded : copy.missing;
-    const cell = items.length
-      ? items
-          .map((item) => {
+    const items = byDay.get(index) || [];
+    const cell = tag('td', {}, items.length
+      ? items.map((item) => {
+          const kind = tag('span', { class: 'plan-kind' }, esc(kindOf(item)));
+          if (item.kind === 'update') {
             const text = plain(item.text, 120);
-            const link = item.url ? ` ${tag('a', { href: item.url, rel: 'noopener nofollow', target: '_blank' }, '↗')}` : '';
-            return `<span class="plan-kind">${esc(kindOf(item))}</span>${text ? ` ${tag('span', { lang: textLang(text, locale) }, esc(text))}` : ''}${link}`;
-          })
-          .join('<br>')
-      : '';
-    rows.push(
-      `<tr${items.length ? '' : ' class="plan-empty"'}><td>${index}</td><td><time datetime="${date}">${esc(shortDate(date, locale))}</time></td><td>${cell}</td><td>${esc(state)}</td></tr>`,
-    );
+            return `${kind}${text ? ` ${tag('span', { lang: textLang(text, locale) }, esc(text))}` : ''}`;
+          }
+          const url = item.url && /^https?:\/\//.test(item.url) ? item.url : null;
+          return `${kind}${url ? ` ${tag('a', { href: url, rel: 'noopener nofollow', target: '_blank', class: 'table-link' }, esc(sourceLinkText))}` : ''}`;
+        }).join('<br>')
+      : tag('span', { class: 'muted' }, esc(copy.missing)));
+    rows.push(tag('tr', items.length ? {} : { class: 'plan-empty' }, [
+      tag('td', {}, String(index)),
+      tag('td', {}, tag('time', { datetime: date }, esc(shortDate(date, locale)))),
+      cell,
+    ].join('')));
   }
 
-  const stats = factGrid(copy.stats.map(([name, template], index) => ({
-    label: name,
-    value: template
-      .replace('{start}', shortDate(startDate, locale))
-      .replace('{end}', shortDate(endDate, locale))
-      .replace('{n}', String(index === 2 ? resetCount : recordedDays)),
-    note: '',
-  })));
+  const stats = factGrid(copy.stats.map(([name, template], index) => factCard(locale, name, template
+    .replace('{start}', shortDate(startDate, locale))
+    .replace('{end}', shortDate(endDate, locale))
+    .replace('{n}', String(index === 2 ? resetCount : recordedDays)))));
 
-  const after = tag('section', { class: 'leaf', id: 'plan-after' }, [
-    tag('div', { class: 'leaf-head' }, tag('h2', {}, esc(copy.afterTitle))),
+  const after = leafSection(locale, { title: copy.afterTitle }, [
     tag('p', {}, esc(copy.afterBody)),
-    tag('p', { class: 'ssr-more' }, [
-      tag('a', { href: pageMetaFor(locale, 'rhythm').path }, esc(copy.afterRhythm)),
-      ' · ',
-      tag('a', { href: pageMetaFor(locale, 'timeline').path }, esc(copy.afterTimeline)),
+    tag('div', { class: 'method-links' }, [
+      tag('a', { class: 'chit', href: pageMetaFor(locale, 'rhythm').path }, esc(copy.afterRhythm)),
+      tag('a', { class: 'chit', href: pageMetaFor(locale, 'timeline').path }, esc(copy.afterTimeline)),
     ].join('')),
-  ].join(''));
+  ]);
 
   const alternates = { zh: PLAN.zh.path, en: PLAN.en.path, xDefault: PLAN.zh.path };
   const head = headBlock({
@@ -2165,46 +2271,45 @@ function planDocument({ origin, pathname }) {
   });
 
   const body = [
-    tag('a', { class: 'skip-link', href: '#doc' }, esc(label(locale, 'skip'))),
+    tag('a', { class: 'skip-link', href: '#doc' }, esc(tx(locale, 'nav.skip'))),
     tag('header', { class: 'masthead' }, tag('div', { class: 'masthead-inner' }, [
       tag('a', { class: 'wordmark', href: locale === 'en' ? '/en/' : '/', 'aria-label': 'Codex Reset' }, [
         tag('span', { class: 'wordmark-mark', 'aria-hidden': 'true' }, ''),
         tag('span', { class: 'wordmark-text' }, 'Codex Reset'),
       ].join('')),
-      tag('nav', { class: 'masthead-nav', 'aria-label': label(locale, 'nav').home }, primaryNav(locale)),
+      tag('nav', { class: 'masthead-nav', 'aria-label': tx(locale, 'nav.home') }, primaryNav(locale)),
     ].join(''))),
     tag('main', { class: 'page doc', id: 'doc', tabindex: '-1' }, [
       tag('nav', { class: 'doc-crumbs', 'aria-label': label(locale, 'breadcrumb') },
-        tag('a', { href: locale === 'en' ? '/en/' : '/' }, esc(label(locale, 'nav').home)) + ' / ' + tag('span', {}, 'Day 1–28'),
+        tag('a', { href: locale === 'en' ? '/en/' : '/' }, esc(tx(locale, 'nav.home'))) + ' / ' + tag('span', {}, 'Day 1–28'),
       ),
-      tag('section', { class: 'page-head plan-hero' }, [
+      tag('header', { class: 'page-head plan-hero' }, [
         tag('p', { class: 'verdict-eyebrow' }, esc(locale === 'en' ? '28-DAY RETROSPECTIVE' : '28 天计划复盘')),
         tag('h1', {}, esc(copy.h1)),
         tag('p', { class: 'plan-badge' }, esc(copy.badge)),
         tag('p', { class: 'lead' }, esc(copy.lead)),
       ].join('')),
       stats,
-      tag('table', { class: 'data-table ssr-table plan-table', 'aria-label': copy.h1 }, [
+      tag('div', { class: 'table-wrap' }, tag('table', { class: 'data-table plan-table', 'aria-label': copy.h1 }, [
         tag('thead', {}, tag('tr', {}, [
-          tag('th', { scope: 'col' }, esc(copy.day)),
-          tag('th', { scope: 'col' }, esc(copy.date)),
-          tag('th', { scope: 'col' }, esc(copy.what)),
-          tag('th', { scope: 'col' }, esc(copy.status)),
+          tag('th', {}, esc(copy.day)),
+          tag('th', {}, esc(copy.date)),
+          tag('th', {}, esc(copy.what)),
         ].join(''))),
         tag('tbody', {}, rows.join('')),
-      ].join('')),
-      tag('p', { class: 'ssr-note' }, esc(copy.note)),
+      ].join(''))),
+      tag('p', { class: 'note' }, esc(copy.note)),
       after,
       tag('section', { class: 'doc-section' }, [
         tag('h2', {}, esc(copy.faqTitle)),
-        tag('dl', { class: 'doc-faq' }, copy.faq.map((item) => tag('dt', {}, esc(item.q)) + tag('dd', {}, esc(item.a))).join('')),
+        faqDetails(copy.faq),
       ].join('')),
       tag('aside', { class: 'doc-related' }, [
         tag('h2', {}, esc(label(locale, 'relatedTitle'))),
         tag('ul', {}, [
-          tag('li', {}, tag('a', { href: pageMetaFor(locale, 'rhythm').path }, esc(navLabel(locale, 'rhythm')))),
-          tag('li', {}, tag('a', { href: pageMetaFor(locale, 'timeline').path }, esc(navLabel(locale, 'timeline')))),
-          tag('li', {}, tag('a', { href: pageMetaFor(locale, 'status').path }, esc(navLabel(locale, 'status')))),
+          tag('li', {}, tag('a', { href: pageMetaFor(locale, 'rhythm').path }, esc(tx(locale, 'nav.rhythm')))),
+          tag('li', {}, tag('a', { href: pageMetaFor(locale, 'timeline').path }, esc(tx(locale, 'nav.timeline')))),
+          tag('li', {}, tag('a', { href: pageMetaFor(locale, 'status').path }, esc(tx(locale, 'nav.status')))),
           tag('li', {}, tag('a', { href: articlePath('codex-reset', locale) }, esc(articleMeta('codex-reset', locale).h1))),
           tag('li', {}, tag('a', { href: 'https://github.com/chendaleiQ/codex-reset', rel: 'noopener' }, esc(locale === 'en' ? 'Source code (GitHub)' : '源码（GitHub，MIT）'))),
         ].join('')),
@@ -2254,10 +2359,11 @@ function monthLabel(month, locale) {
   const [year, monthNumber] = String(month || '').split('-');
   const date = new Date(Date.UTC(Number(year), Number(monthNumber) - 1, 1, 12));
   if (!Number.isFinite(date.getTime())) return month;
-  if (locale === 'en') {
-    return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(date);
-  }
-  return `${year} 年 ${Number(monthNumber)} 月`;
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'zh-CN', {
+    timeZone: 'UTC',
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
 }
 
 /** Every month that has at least one record, newest first. */
@@ -2683,9 +2789,12 @@ function llmsTxt(origin) {
   const stamp = zh.at ? formatDateTime(new Date(zh.at).toISOString(), 'zh') : '—';
   const lastReset = zh.lastResetAt ? formatDateTime(zh.lastResetAt, 'zh') : '—';
   const faq = label('zh', 'faq');
-  const confidence = confidenceWord('zh', zh.confidence || 'low');
-  const range24 = pctRange(zh.forecast.probabilities.range_24h);
-  const range48 = pctRange(zh.forecast.probabilities.range_48h);
+  const confidence = tx('zh', `verdict.confidence.${zh.confidence || 'low'}`);
+  const boundsText = (range) => (range && typeof range.lower === 'number' && typeof range.upper === 'number'
+    ? `${Math.round(range.lower * 100)}–${Math.round(range.upper * 100)}%`
+    : null);
+  const range24 = boundsText(zh.forecast.probabilities.range_24h);
+  const range48 = boundsText(zh.forecast.probabilities.range_48h);
   const total = zh.rhythm.stats && zh.rhythm.stats.resets ? zh.rhythm.stats.resets : zh.resets.length;
   const window = zh.window || (Array.isArray(zh.rhythm.windows) ? zh.rhythm.windows[0] : null);
   const routeKeys = shared.meta.ROUTE_KEYS.slice();
@@ -2703,8 +2812,8 @@ function llmsTxt(origin) {
     `## 当前状态（截至 ${stamp} 北京时间）`,
     '',
     `- 最近一次已确认的全局重置：${lastReset}（北京时间）`,
-    zh.chance24 !== null ? `- 未来 24 小时重置概率：${zh.chance24}%${range24 ? `（区间 ${range24}）` : ''}，置信度${confidence}` : null,
-    zh.chance48 !== null ? `- 未来 48 小时重置概率：${zh.chance48}%${range48 ? `（区间 ${range48}）` : ''}，置信度${confidence}` : null,
+    zh.chance24 !== null ? `- 未来 24 小时重置概率：${zh.chance24}%${range24 ? `（可能范围 ${range24}）` : ''}，可信度${confidence}` : null,
+    zh.chance48 !== null ? `- 未来 48 小时重置概率：${zh.chance48}%${range48 ? `（可能范围 ${range48}）` : ''}，可信度${confidence}` : null,
     `- 已记录的重置事件：${total} 次重置，另有 ${zh.counts.banked} 次备用额度`,
     zh.typicalDays !== null ? `- 相邻重置间隔中位数：${Math.round(zh.typicalDays * 10) / 10} 天` : null,
     window

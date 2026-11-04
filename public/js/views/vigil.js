@@ -66,29 +66,36 @@ export async function render(host, app) {
     const left = el('div');
     left.append(
       el('p', { class: 'field-label' }, t('vigil.believers')),
-      el('p', { class: 'vigil-count' }, t('vigil.countLine', { n: formatNumber(vigil.believers, locale) })),
+      el(
+        'p',
+        { class: 'vigil-count' },
+        vigil.believers > 0
+          ? t('vigil.countLine', { n: formatNumber(vigil.believers, locale) })
+          : t('vigil.countZero'),
+      ),
       el(
         'p',
         { class: 'vigil-meta' },
         vigil.startedAt
           ? t('vigil.cycle', {
-              cycle: formatNumber(vigil.cycle, locale),
+              date: formatDay(vigil.startedAt, locale) ?? '—',
               day: formatNumber(Math.max(1, Math.floor((Date.now() - Date.parse(vigil.startedAt)) / 86_400_000) + 1), locale),
             })
           : t('common.unavailable'),
-        vigil.startedAt ? formatDay(vigil.startedAt, locale) : null,
       ),
     );
 
-    const right = el('div');
-    const candles = el('div', { class: 'candles', role: 'img', 'aria-label': `${crowdSize(vigil.believers)}/12` });
-    const lit = Math.min(12, Math.floor(vigil.believers / 10));
-    for (let index = 0; index < 12; index += 1) {
-      candles.append(el('span', { class: 'candle', dataset: { lit: String(index < lit) } }));
+    countHost.append(left);
+    if (vigil.believers > 0) {
+      const right = el('div');
+      const candles = el('div', { class: 'candles', role: 'img', 'aria-label': `${crowdSize(vigil.believers)}/12` });
+      const lit = Math.min(12, Math.floor(vigil.believers / 10));
+      for (let index = 0; index < 12; index += 1) {
+        candles.append(el('span', { class: 'candle', dataset: { lit: String(index < lit) } }));
+      }
+      right.append(candles);
+      countHost.append(right);
     }
-    right.append(candles, el('p', { class: 'field-hint', style: 'margin-top:12px' }, t('footer.data')));
-
-    countHost.append(left, right);
   }
 
   /* --- join form ---------------------------------------------------------- */
@@ -331,7 +338,21 @@ export async function render(host, app) {
         ? t('vigil.clockAsleep', { time })
         : t(hits >= peakFloor ? 'vigil.clockPrime' : 'vigil.clockAwake', { time, count: hits, total });
 
-    clockHost.append(plot, labels, verdict, el('p', { class: 'field-hint' }, `${zoneLabel(getTimeZone(), locale)} · ${t('vigil.sleepFooter')}`));
+    clockHost.append(
+      plot,
+      labels,
+      verdict,
+      el(
+        'p',
+        { class: 'hours-legend' },
+        el('span', { class: 'hours-legend-swatch', dataset: { peak: 'true' }, 'aria-hidden': 'true' }),
+        t('vigil.sleepLegend'),
+        ' · ',
+        el('span', { class: 'hours-legend-swatch', dataset: { peak: 'false' }, 'aria-hidden': 'true' }),
+        t('vigil.sleepLegendQuiet'),
+      ),
+      el('p', { class: 'field-hint' }, `${zoneLabel(getTimeZone(), locale)} · ${t('vigil.sleepFooter')}`),
+    );
   }
 
   /* --- my local record ---------------------------------------------------- */

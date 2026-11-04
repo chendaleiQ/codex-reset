@@ -429,10 +429,8 @@
 
 .doc-related {
   margin-top: var(--s7);
-  padding: var(--s5);
-  border: 1px solid var(--hair);
-  border-radius: 10px;
-  background: var(--surface);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--hair);
 }
 
 .doc-related h2 {
@@ -536,10 +534,19 @@
   color: var(--ink-4);
 }
 
+.plan-table td {
+  vertical-align: top;
+}
+
 .plan-table td:last-child {
-  white-space: nowrap;
-  color: var(--ink-3);
-  font-size: var(--t-meta);
+  white-space: normal;
+  color: var(--ink-2);
+  font-size: inherit;
+  line-height: 1.55;
+}
+
+.plan-table td:last-child .table-link {
+  margin-left: 6px;
 }
 
 /* --- more links under the guide cards ------------------------------------ */

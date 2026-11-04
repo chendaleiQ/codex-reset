@@ -23,9 +23,9 @@ const META = {
       path: '/',
       title: 'Codex 重置追踪：今天会重置吗？重置概率与记录',
       description:
-        '追踪 OpenAI Codex 的全局额度重置：最近一次已确认重置、未来 24 与 48 小时重置概率及区间、重置节奏与完整记录。数据来自本站公开台账，每条都可追溯到一条 X 原帖。',
+        '看本站自己的公开台账：上一次 Codex 重置是什么时候、未来 24 和 48 小时再重置的可能有多大、可能范围和可信度，以及最近的重置记录。每条都能点回原帖。',
       h1: 'Codex 今天会重置吗？',
-      lead: '用本站公开台账回答一个问题：今天会不会重置。概率、等待对比和下一次高频窗口都在这里，证据指向完整节奏页。',
+      lead: '用本站自己维护的公开台账回答一个问题：今天会不会重置。概率、等待对比和最容易重置的时段都在这里，依据在重置节奏页。',
     },
     en: {
       path: '/en/',
@@ -41,7 +41,7 @@ const META = {
       path: '/rhythm',
       title: '重置节奏：Codex 重置的间隔、时段与高频窗口',
       description:
-        '把每一次已确认重置放到同一条时间轴上：间隔多久、落在星期几的几点、下一次最可能出现在哪个窗口，以及这些数字是怎么算出来的。',
+        '过去每次重置之间隔了多久、通常发生在星期几的几点、下一次最可能出现在哪个时段，以及这些数字是怎么算出来的。全部由本站台账在本地计算。',
       h1: '重置节奏',
       lead: '把每一次已确认重置放到同一条时间轴上：间隔多久、落在星期几的几点、下一条最可能出现在哪个窗口。全部由本站台账在本地计算。',
     },
@@ -49,7 +49,7 @@ const META = {
       path: '/en/rhythm',
       title: 'Codex Reset Rhythm — Intervals, Hour Windows and Cadence',
       description:
-        'Every confirmed reset on one timeline: how far apart they land, which weekday and hour they cluster in, the most likely window, and how each number is computed.',
+        'How far apart Codex resets have landed, which weekday and hour they cluster in, the most likely window, and how each number is computed — from this site’s own ledger.',
       h1: 'Reset rhythm',
       lead: 'Every confirmed reset on one timeline: how long the gaps are, which weekday hours they land in, and where the next one is most likely to appear. All computed locally from our own ledger.',
     },
@@ -75,17 +75,17 @@ const META = {
   status: {
     zh: {
       path: '/status',
-      title: 'Codex 数据状态：台账新鲜度、覆盖范围与模型回测',
+      title: 'Codex 数据状态：台账更新、覆盖范围与缺口',
       description:
-        '本站只有一个数据源：仓库里的公开台账。这里说明它更新到什么时候、覆盖了哪些时间、哪里还有缺口，以及模型参数与自带回测结果。',
+        '本站只有一个数据源：仓库里的公开台账。这里写清楚它上次什么时候更新、覆盖了哪段时间、哪些地方还有缺口，以及数据检查是否正常。',
       h1: '数据状态',
       lead: '这个站只有一个数据源：仓库里的公开台账。这里说明它更新到什么时候、覆盖了哪些时间、哪里还有缺口，以及模型的自带回测。',
     },
     en: {
       path: '/en/status',
-      title: 'Codex Reset Data Status — Ledger Freshness, Coverage & Backtest',
+      title: 'Codex Data Status — Ledger Updates, Coverage and Gaps',
       description:
-        'One data source: the public ledger in this repository. How fresh it is, which period it covers, where the gaps are, and the model parameters behind every number.',
+        'One data source: the public ledger in this repository. When it was last updated, which period it covers, where the gaps are, and whether the checks pass.',
       h1: 'Data status',
       lead: 'This site has exactly one data source: the public ledger in the repository. This page shows when it was updated, what it covers, where the gaps are, and how the model scored against itself.',
     },

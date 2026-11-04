@@ -3,19 +3,17 @@
    ========================================================================= */
 
 .page-head {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--s5);
-  flex-wrap: wrap;
+  display: block;
   margin-bottom: var(--s6);
 }
 
 .page-head h1 {
-  margin-right: auto;
+  margin: 0;
 }
 
 .page-head .lead {
-  padding-bottom: 5px;
+  margin-top: var(--s4);
+  max-width: 62ch;
 }
 
 /* --- overview: one board owns the first viewport ------------------------- */
@@ -448,16 +446,18 @@
 
 .faq summary::before {
   content: '';
-  width: 4px;
-  height: 15px;
+  width: 7px;
+  height: 7px;
   flex: none;
-  border-radius: 1px;
-  background: var(--line-cobalt);
-  transform: translateY(1px);
+  border-right: 1.5px solid var(--ink-3);
+  border-bottom: 1.5px solid var(--ink-3);
+  transform: translateY(-1px) rotate(45deg);
+  transition: transform 160ms ease;
 }
 
 .faq details[open] summary::before {
-  background: var(--ink);
+  transform: translateY(2px) rotate(225deg);
+  border-color: var(--ink);
 }
 
 .faq summary:hover {

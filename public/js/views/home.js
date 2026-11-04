@@ -3,12 +3,12 @@
  * based on, the records themselves, and where the numbers come from.
  */
 
-import { clear, el, icon, link, safeXUrl } from '../dom.js';
+import { clear, el, link, safeXUrl } from '../dom.js';
 import { forecastView, rhythmView, timelineView } from '../model.js';
 import { getState, subscribe } from '../store.js';
 import { formatDateTime, formatDays, formatNumber } from '../format.js';
 import { getTimeZone, subscribeTimeZone, zoneShort } from '../time-zone.js';
-import { fact, factGrid, heatmapBlock, leaf, padHour } from './_parts.js';
+import { fact, factGrid, heatmapBlock, leaf, padHour, windowRange } from './_parts.js';
 
 const RECENT_LIMIT = 6;
 
@@ -79,14 +79,6 @@ export async function render(host, app) {
       link('/rhythm', t('home.methodRhythm'), { className: 'chit' }),
       link('/about', t('home.methodAbout'), { className: 'chit' }),
     ),
-    el('h3', { class: 'guide-heading' }, t('home.guidesTitle')),
-    el(
-      'div',
-      { class: 'guide-links' },
-      guideLink('/guide/codex-reset', 'guide-reset', t('guide.reset')),
-      guideLink('/guide/codex-5-hour-limit', 'guide-limit', t('guide.limit')),
-      guideLink('/guide/codex-banked-reset', 'guide-banked', t('guide.banked')),
-    ),
   );
 
   rhythmSection.append(rhythmFoot);
@@ -94,37 +86,32 @@ export async function render(host, app) {
 
   /* --- painting ----------------------------------------------------------- */
 
-  const pair = (node, percent, range, confidence) => {
+  const pair = (node, percent, range, numeric) => {
+    const meter = numeric && percent !== null
+      ? el(
+          'span',
+          { class: 'verdict-meter', 'aria-hidden': 'true' },
+          el('span', {
+            class: 'verdict-meter-band',
+            style: `--lo:${numeric.lower}%;--hi:${numeric.upper}%;--at:${percent}%`,
+          }),
+        )
+      : null;
     node.replaceChildren(
       el('span', { class: 'verdict-value' }, percent === null ? '—' : `${percent}%`),
       el('span', { class: 'verdict-label' }, node === number24 ? t('verdict.window24') : t('verdict.window48')),
-      el(
-        'span',
-        { class: 'verdict-range' },
-        range === null ? t('verdict.rangeNone') : t('verdict.range', { range }),
-      ),
-      el('span', { class: 'verdict-confidence' }, t('verdict.confidenceLabel', { level: t(`verdict.confidence.${confidence}`) })),
+      el('span', { class: 'verdict-range' }, range === null ? t('verdict.rangeNone') : t('verdict.range', { range })),
+      meter,
     );
   };
-
-  function windowRange(startHour, endHour, timeZone) {
-    if (!Number.isFinite(startHour) || !Number.isFinite(endHour)) return null;
-    // Windows are published in UTC; shift the two edges into the visitor's zone.
-    const edges = [startHour, endHour].map((hour) => {
-      const stamp = Date.UTC(2026, 0, 5, hour);
-      const view = new Intl.DateTimeFormat('en-US', { timeZone, hour: '2-digit', hourCycle: 'h23' }).format(new Date(stamp));
-      return `${view}:00`;
-    });
-    return `${edges[0]}–${edges[1]}`;
-  }
 
   function paintVerdict() {
     const view = forecastView(state.forecast, locale);
     if (!view) {
       answer.textContent = state.forecastError ? t('common.readError') : t('common.loading');
       answer.dataset.tone = state.forecastError ? 'warn' : 'plain';
-      pair(number24, null, null);
-      pair(number48, null, null);
+      pair(number24, null, null, null);
+      pair(number48, null, null, null);
       facts.replaceChildren();
       note.textContent = '';
       pending.hidden = true;
@@ -146,8 +133,8 @@ export async function render(host, app) {
     }
 
     for (const node of [number24, number48]) node.dataset.confidence = view.confidence ?? 'low';
-    pair(number24, view.chance24, view.range24, view.confidence ?? 'low');
-    pair(number48, view.chance48, view.range48, view.confidence ?? 'low');
+    pair(number24, view.chance24, view.range24, view.range24Numeric);
+    pair(number48, view.chance48, view.range48, view.range48Numeric);
 
     const lastReset = formatDateTime(view.lastResetAt, locale);
     const waitDays = view.wait?.days ?? view.ageDays;
@@ -177,7 +164,11 @@ export async function render(host, app) {
         t('verdict.nextWindow'),
         localRange ?? t('common.unavailable'),
         view.window
-          ? t('verdict.windowUtc', { range: utcRange, share: view.window.share ?? '—' })
+          ? t('verdict.windowUtc', {
+              range: utcRange,
+              count: formatNumber(view.window.count, locale),
+              total: formatNumber(view.window.total, locale),
+            })
           : t('verdict.windowNone'),
       ),
     );
@@ -261,18 +252,27 @@ export async function render(host, app) {
       recentHost.append(el('p', { class: 'empty' }, t('timeline.empty')));
       return;
     }
+    // The gap to the previous reset is the useful second column; the kind is
+    // already implied by it (a banked grant has no gap).
+    const chronological = view.events.slice();
+    const gaps = new Map();
+    for (let i = 1; i < chronological.length; i += 1) {
+      const previous = Date.parse(chronological[i - 1].at ?? '');
+      const current = Date.parse(chronological[i].at ?? '');
+      if (Number.isFinite(previous) && Number.isFinite(current)) gaps.set(chronological[i], (current - previous) / 86_400_000);
+    }
     const table = el('table', { class: 'data-table recent-table' });
     table.append(
       el(
         'thead',
         {},
-        el('tr', {}, el('th', {}, t('home.colWhen')), el('th', {}, t('home.colKind')), el('th', {}, t('home.colSource'))),
+        el('tr', {}, el('th', {}, t('home.colWhen')), el('th', {}, t('home.colGap')), el('th', {}, t('home.colSource'))),
       ),
     );
     const body = el('tbody');
     for (const event of rows) {
       const url = safeXUrl(event.sourceUrl);
-      const kind = event.kind === 'banked' ? t('home.kindBanked') : t('home.kindReset');
+      const gap = gaps.get(event);
       body.append(
         el(
           'tr',
@@ -280,9 +280,12 @@ export async function render(host, app) {
           el('td', { class: 'table-time' }, formatDateTime(event.at, locale) ?? t('common.unavailable')),
           el(
             'td',
-            {},
-            el('span', { class: 'chit', dataset: { tone: event.kind === 'banked' ? 'line' : 'ok' } }, kind),
-            event.state === 'announced' ? el('span', { class: 'chit', dataset: { tone: 'warn' } }, t('timeline.announced')) : null,
+            { class: 'num' },
+            event.kind === 'banked'
+              ? el('span', { class: 'muted' }, t('home.kindBanked'))
+              : gap === undefined
+                ? el('span', { class: 'muted' }, '—')
+                : t('common.days', { n: formatDays(gap, locale) }),
           ),
           el(
             'td',
@@ -323,8 +326,3 @@ export async function render(host, app) {
   };
 }
 
-/* ------------------------------------------------------------------ fragments */
-
-function guideLink(href, key, label) {
-  return el('a', { href, 'data-seo-link': key, class: 'chit guide-link' }, label, icon('external', { size: 13 }));
-}

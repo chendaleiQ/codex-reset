@@ -9,8 +9,8 @@
 import { el, link, safeXUrl } from '../dom.js';
 import { dataStatusView, forecastView } from '../model.js';
 import { getState, loadStatus, subscribe } from '../store.js';
-import { formatDateTime, formatDays, formatNumber } from '../format.js';
-import { subscribeTimeZone } from '../time-zone.js';
+import { formatDateTime, formatDays, formatNumber, relativeTime } from '../format.js';
+import { getTimeZone, subscribeTimeZone } from '../time-zone.js';
 import { fact, factGrid, leaf } from './_parts.js';
 
 export async function render(host, app) {
@@ -46,6 +46,17 @@ export async function render(host, app) {
 
   const view = () => dataStatusView(state.status);
 
+  const formatFullDate = (iso) => {
+    const at = Date.parse(iso ?? '');
+    if (!Number.isFinite(at)) return null;
+    return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'zh-CN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: getTimeZone(),
+    }).format(new Date(at));
+  };
+
   function unavailable(node, error) {
     node.replaceChildren(el('p', { class: 'empty' }, error ? t('common.readError') : t('common.loading')));
   }
@@ -54,16 +65,21 @@ export async function render(host, app) {
     freshnessHost.replaceChildren();
     if (!status) return unavailable(freshnessHost, state.statusError);
     const { dataset, freshness } = status;
-    const age = freshness.ageHours;
     freshnessHost.append(
       factGrid([
-        fact(t('datastatus.updated'), formatDateTime(status.updatedAt, locale) ?? t('common.unavailable')),
-        fact(t('datastatus.age'), age === null ? '—' : formatNumber(age, locale), t('datastatus.threshold', { n: freshness.thresholdHours }), {
-          unit: age === null ? null : locale === 'zh' ? '小时' : 'hours',
-        }),
+        fact(
+          t('datastatus.updated'),
+          formatDateTime(status.updatedAt, locale) ?? t('common.unavailable'),
+          status.updatedAt ? t('datastatus.age', { when: relativeTime(status.updatedAt, Date.now(), locale) }) : null,
+        ),
         fact(
           t('datastatus.level'),
-          el('span', { class: 'mark', dataset: { tone: freshness.level === 'fresh' ? 'ok' : freshness.level === 'stale' ? 'warn' : 'plain', shape: 'rule' } }, t(`datastatus.level.${freshness.level}`)),
+          el(
+            'span',
+            { class: 'level-text', dataset: { tone: freshness.level === 'fresh' ? 'ok' : freshness.level === 'stale' ? 'warn' : 'plain' } },
+            t(`datastatus.level.${freshness.level}`),
+          ),
+          t('datastatus.threshold', { n: freshness.thresholdHours }),
         ),
         fact(t('datastatus.events'), formatNumber(dataset.total, locale)),
       ]),
@@ -76,7 +92,7 @@ export async function render(host, app) {
     const { dataset } = status;
     coverageHost.append(
       factGrid([
-        fact(t('datastatus.first'), formatDateTime(dataset.firstAt, locale) ?? t('common.unavailable')),
+        fact(t('datastatus.first'), formatFullDate(dataset.firstAt) ?? t('common.unavailable')),
         fact(t('datastatus.lastReset'), formatDateTime(dataset.lastResetAt, locale) ?? t('common.unavailable')),
         fact(t('datastatus.resets'), formatNumber(dataset.reset, locale)),
         fact(t('datastatus.banked'), formatNumber(dataset.banked, locale)),
@@ -108,9 +124,15 @@ export async function render(host, app) {
         el(
           'tr',
           {},
-          el('td', {}, gap.from ?? '—'),
-          el('td', {}, gap.to ?? '—'),
-          el('td', { class: 'num' }, gap.days === null ? '—' : formatDays(gap.days, locale)),
+          el('td', {}, formatFullDate(gap.from) ?? gap.from ?? '—'),
+          el('td', {}, formatFullDate(gap.to) ?? gap.to ?? '—'),
+          el(
+            'td',
+            { class: 'num' },
+            gap.days === null
+              ? '—'
+              : `${formatDays(gap.days, locale)} ${locale === 'zh' ? '天' : 'days'}`,
+          ),
         ),
       );
     }
@@ -127,6 +149,13 @@ export async function render(host, app) {
   function checkDetail(check) {
     const key = CHECK_DETAILS[check.detail];
     if (key) return t(key);
+    const detailKey = `datastatus.checkDetail.${check.name}`;
+    const detail = t(detailKey);
+    if (detail !== detailKey) {
+      return check.value === null || check.value === undefined
+        ? detail
+        : t(detailKey, { n: formatNumber(check.value, locale) });
+    }
     return check.detail;
   }
 
@@ -177,13 +206,7 @@ export async function render(host, app) {
     if (params.gap_days !== undefined) push(t('datastatus.gapThreshold'), t('rhythm.valueDays', { n: params.gap_days }));
     if (params.stale_hours !== undefined) push(t('datastatus.staleHours'), t('rhythm.valueHours', { n: params.stale_hours }));
 
-    if (rows.length) {
-      const table = el('table', { class: 'data-table param-table' });
-      const body = el('tbody');
-      for (const [label, value] of rows) body.append(el('tr', {}, el('th', { scope: 'row' }, label), el('td', {}, String(value))));
-      table.append(body);
-      modelHost.append(el('div', { class: 'table-wrap' }, table));
-    }
+    modelHost.append(el('p', { class: 'method-body' }, t('datastatus.modelNote')));
 
     if (backtest) {
       if (backtest.brier === null || backtest.brier === undefined) {
@@ -191,20 +214,44 @@ export async function render(host, app) {
       } else {
         modelHost.append(
           factGrid([
-            fact(t('datastatus.brier'), formatNumber(backtest.brier, locale), backtest.method ?? null),
+            fact(
+              t('datastatus.brier'),
+              formatNumber(backtest.brier, locale),
+              backtest.method === 'walk-forward' ? t('rhythm.methodWalkForward') : backtest.method ?? null,
+            ),
             fact(t('datastatus.baseline'), formatNumber(backtest.baselineBrier, locale), backtest.betterThanBaseline ? t('datastatus.beats') : t('datastatus.notBeats')),
             fact(t('rhythm.paramSample'), formatNumber(backtest.sampleSize ?? model?.sample_size, locale)),
           ], 'factgrid backtest-facts'),
         );
       }
     }
+
+    if (rows.length) {
+      const table = el('table', { class: 'data-table param-table' });
+      const body = el('tbody');
+      for (const [label, value] of rows) body.append(el('tr', {}, el('th', { scope: 'row' }, label), el('td', {}, String(value))));
+      table.append(body);
+      modelHost.append(
+        el(
+          'details',
+          { class: 'method-details' },
+          el('summary', {}, t('rhythm.paramsSummary')),
+          el('div', { class: 'table-wrap' }, table),
+        ),
+      );
+    }
   }
 
   function paintSources(status) {
     sourcesHost.replaceChildren();
-    const sources = status?.sources?.length
-      ? status.sources
-      : [{ label: t('datastatus.sourceFallback'), url: 'https://x.com/thsottiaux' }];
+    const seen = new Set();
+    const sources = (status?.sources?.length ? status.sources : [{ label: t('datastatus.sourceFallback'), url: 'https://x.com/thsottiaux' }])
+      .filter((source) => {
+        const key = `${source.label ?? ''}|${source.url ?? ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     const list = el('ul', { class: 'source-list' });
     for (const source of sources) {
       const url = safeXUrl(source.url);
@@ -212,7 +259,11 @@ export async function render(host, app) {
         el(
           'li',
           {},
-          el('span', { class: 'source-label' }, source.label ?? t('datastatus.sourceFallback')),
+          el(
+            'span',
+            { class: 'source-label' },
+            locale === 'en' ? t('datastatus.sourceFallback') : source.label ?? t('datastatus.sourceFallback'),
+          ),
           url ? link(url, `${t('datastatus.openSource')} ↗`, { external: true, className: 'table-link' }) : null,
         ),
       );

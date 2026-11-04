@@ -2,6 +2,7 @@
 
 import { el, icon, link, safeHref, svgEl } from '../dom.js';
 import { formatCompact, formatDay, formatDateTime, formatDays, formatNumber } from '../format.js';
+import { getTimeZone } from '../time-zone.js';
 
 /* -------------------------------------------------------------------- leaf */
 
@@ -66,18 +67,41 @@ export function heatmapBlock({ heatmap, weekdayLabels, t, total, locale = 'zh' }
     'div',
     { class: 'heatmap', role: 'img', 'aria-label': t('heatmap.aria', { n: formatNumber(total ?? rows.flat().reduce((sum, value) => sum + (Number(value) || 0), 0), locale) }) },
     grid,
-    el('p', { class: 'heatmap-legend' }, t('heatmap.legend')),
+    el(
+      'div',
+      { class: 'heatmap-foot' },
+      el('p', { class: 'heatmap-legend' }, t('heatmap.legend')),
+      el(
+        'p',
+        { class: 'heatmap-scale', 'aria-hidden': 'true' },
+        el('span', { class: 'heatmap-scale-label' }, t('heatmap.scaleLow')),
+        [0, 1, 2, 3, 4].map((level) => el('span', { class: 'heatmap-swatch', dataset: { level: String(level) } })),
+        el('span', { class: 'heatmap-scale-label' }, t('heatmap.scaleHigh')),
+      ),
+    ),
   );
 }
 
 /* ------------------------------------------------------------ window list */
 
-export function windowList(windows, t) {
+/** Shifts a UTC hour into the visitor's zone for a secondary label. */
+export function windowRange(startHour, endHour, timeZone = getTimeZone()) {
+  if (!Number.isFinite(startHour) || !Number.isFinite(endHour)) return null;
+  const edges = [startHour, endHour].map((hour) => {
+    const stamp = Date.UTC(2026, 0, 5, hour);
+    const view = new Intl.DateTimeFormat('en-US', { timeZone, hour: '2-digit', hourCycle: 'h23' }).format(new Date(stamp));
+    return `${view}:00`;
+  });
+  return `${edges[0]}–${edges[1]}`;
+}
+
+export function windowList(windows, t, { locale = 'zh', timeZone = getTimeZone() } = {}) {
   const rows = Array.isArray(windows) ? windows : [];
   if (!rows.length) return el('p', { class: 'empty' }, t('verdict.windowNone'));
   const list = el('ol', { class: 'window-list' });
   for (const window of rows) {
     const range = `${padHour(window.startHour)}–${padHour(window.endHour)}`;
+    const local = windowRange(window.startHour, window.endHour, timeZone);
     list.append(
       el(
         'li',
@@ -86,17 +110,21 @@ export function windowList(windows, t) {
         el(
           'span',
           { class: 'window-main' },
-          el('span', { class: 'window-range' }, `UTC ${range}`),
+          el(
+            'span',
+            { class: 'window-range' },
+            t('rhythm.windowRow', {
+              range,
+              local: local ?? '—',
+              count: formatCompact(window.count, locale),
+              share: window.share === null ? '—' : window.share,
+            }),
+          ),
           el(
             'span',
             { class: 'window-bar', 'aria-hidden': 'true' },
             el('span', { style: `--w:${Math.max(0, Math.min(100, Number(window.share) || 0))}%` }),
           ),
-        ),
-        el(
-          'span',
-          { class: 'window-meta' },
-          `${formatCompact(window.count)} · ${window.share === null ? '—' : `${window.share}%`}`,
         ),
       ),
     );
@@ -138,15 +166,41 @@ export function rhythmChart(rows, { locale, t, readout }) {
     const scaleY = (days) => padT + innerH - (days / maxDays) * innerH;
     const ticks = [0, Math.round(maxDays / 2), maxDays];
 
-    const svg = svgEl('svg', { viewBox: `0 0 ${width} ${RHYTHM_H}`, width, height: RHYTHM_H, role: 'img' });
+    const svg = svgEl('svg', {
+      viewBox: `0 0 ${width} ${RHYTHM_H}`,
+      width,
+      height: RHYTHM_H,
+      role: 'img',
+      'aria-label': t('rhythm.distribution'),
+    });
 
     const grid = svgEl('g', { class: 'plot-grid' });
     for (const tick of ticks) {
       grid.append(svgEl('line', { x1: padL, x2: width - padR, y1: scaleY(tick), y2: scaleY(tick) }));
     }
+    const unit = locale === 'zh' ? '天' : 'd';
     const axis = svgEl('g', { class: 'plot-axis' });
     for (const tick of ticks) {
-      axis.append(svgEl('text', { x: padL - 8, y: scaleY(tick) + 4, 'text-anchor': 'end' }, String(tick)));
+      axis.append(svgEl('text', { x: padL - 8, y: scaleY(tick) + 4, 'text-anchor': 'end' }, `${tick} ${unit}`));
+    }
+    const xAxis = svgEl('g', { class: 'plot-axis plot-axis-x' });
+    const firstRow = rows[0];
+    const lastRow = rows[rows.length - 1];
+    const axisDate = (iso, withYear) => {
+      const at = Date.parse(iso ?? '');
+      if (!Number.isFinite(at)) return '';
+      return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'zh-CN', {
+        ...(withYear ? { year: 'numeric' } : {}),
+        month: 'short',
+        day: 'numeric',
+        timeZone: getTimeZone(),
+      }).format(new Date(at));
+    };
+    if (firstRow?.at) {
+      xAxis.append(svgEl('text', { x: padL, y: RHYTHM_H - 12, 'text-anchor': 'start' }, axisDate(firstRow.at, true)));
+    }
+    if (lastRow?.at) {
+      xAxis.append(svgEl('text', { x: width - padR, y: RHYTHM_H - 12, 'text-anchor': 'end' }, axisDate(lastRow.at, false)));
     }
 
     const bars = svgEl('g', { class: 'plot-bars' });
@@ -188,10 +242,11 @@ export function rhythmChart(rows, { locale, t, readout }) {
       svgEl('line', { class: 'plot-mean', x1: padL, x2: width - padR, y1: meanY, y2: meanY }),
       svgEl(
         'text',
-        { class: 'plot-mean-label', x: width - padR, y: meanY - 6, 'text-anchor': 'end' },
-        `${t('timeline.gap')} ${locale === 'zh' ? '均值' : 'mean'} ${formatDays(mean, locale)}`,
+        { class: 'plot-mean-label', x: padL + 4, y: meanY - 6, 'text-anchor': 'start' },
+        `${locale === 'zh' ? '平均' : 'mean'} ${formatDays(mean, locale)} ${unit}`,
       ),
       axis,
+      xAxis,
       bars,
     );
     plot.replaceChildren(svg);
