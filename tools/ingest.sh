@@ -42,8 +42,13 @@ fi
 
 git pull --rebase --quiet
 
+notify_failure() {
+  /usr/bin/osascript -e "display notification \"$1\" with title \"Codex Reset 数据采集失败\"" >/dev/null 2>&1 || true
+}
+
 if ! node tools/ingest.js --apply; then
   echo "$LOG_PREFIX ingest failed; ledger left untouched"
+  notify_failure "抓取失败，站点保持上一次数据"
   exit 1
 fi
 
@@ -54,5 +59,9 @@ fi
 
 git add data/ledger.json
 git commit -m "data: ingest public reset posts ($(date -u +%Y-%m-%dT%H:%MZ))"
-git push
+if ! git push; then
+  echo "$LOG_PREFIX push failed"
+  notify_failure "提交推送失败，数据未上线"
+  exit 1
+fi
 echo "$LOG_PREFIX pushed; deploy workflow will pick it up"
