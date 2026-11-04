@@ -10,6 +10,9 @@
 # The site itself never runs this; it stays self-contained.
 set -euo pipefail
 
+# launchd gives a minimal PATH; Homebrew node and git live outside it.
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO"
 LOG_PREFIX="[codex-reset ingest $(date -u +%Y-%m-%dT%H:%MZ)]"
