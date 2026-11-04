@@ -100,7 +100,7 @@ function decorateShell(html, lang) {
   const en = lang === 'en';
   const status = data.status();
   const level = status.freshness?.level || 'unknown';
-  const chipText = level === 'fresh' ? (en ? 'Data fresh' : '数据新鲜') : level === 'stale' ? (en ? 'Data stale' : '数据过期') : en ? 'Unknown' : '未知';
+  const chipText = level === 'fresh' ? (en ? 'Data OK' : '数据正常') : level === 'stale' ? (en ? 'Data stale' : '数据过期') : en ? 'Unknown' : '未知';
   const tone = level === 'fresh' ? 'ok' : level === 'stale' ? 'warn' : 'dim';
   const updated = status.updated_at ? `${status.updated_at.slice(0, 16).replace('T', ' ')} UTC` : en ? 'unknown' : '未知';
   return html
