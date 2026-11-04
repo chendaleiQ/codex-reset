@@ -6,18 +6,18 @@ name: Ingest
 # self-contained: it serves whatever data/ contains, and a push here goes
 # through the same deploy pipeline as a hand-written commit.
 #
-# The schedule is enabled after the runner has been proven able to reach X;
-# until then the job runs on demand only.
+# NOTE: GitHub-hosted runners get HTTP 403 from x.com (datacenter IPs are
+# blocked), and the production box in mainland China cannot reach it either.
+# The routine collector therefore runs on the maintainer's Mac via launchd
+# (tools/ingest.sh, every 2 hours); this workflow stays as a manual fallback
+# for when the job can be run somewhere with residential access.
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '17 */2 * * *'
 
 permissions:
   contents: write
   actions: write
-  issues: write
 
 concurrency:
   group: ingest
@@ -68,14 +68,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run deploy.yml --ref main
-
-      - name: 失败时开 issue
-        if: failure()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          title="Ingest 失败：$(date -u +%F)"
-          existing="$(gh issue list --state open --search "$title in:title" --json number --jq 'length' || echo 0)"
-          if [ "$existing" = "0" ]; then
-            gh issue create --title "$title" --body "自动抓取失败，站点数据保持上一次成功抓取的版本。请查看 Actions 日志：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true
-          fi

@@ -11,7 +11,9 @@
     "check:server": "node tools/check-server.js",
     "check:deploy": "node tools/check-deploy.js",
     "deploy": "bash deploy/remote-deploy.sh",
-    "check:seo": "node tools/check-seo.js"
+    "check:seo": "node tools/check-seo.js",
+    "ingest": "node tools/ingest.js",
+    "ingest:apply": "node tools/ingest.js --apply"
   },
   "engines": {
     "node": ">=18"
