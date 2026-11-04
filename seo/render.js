@@ -1850,7 +1850,7 @@ const ABOUT = {
         h2: '一次重置是怎么被判定为「已确认」的',
         paragraphs: [
           '台账里区分 announced（已宣布）与 confirmed（已确认）两种状态，只有 confirmed 的重置才会进入概率样本。',
-          '一条「今天会重置」的公开承诺先记为 announced；等到事件时间点明确、有公开证据表明它确实落地，才改为 confirmed。没有确认的条目会一直保留 announced 标记，并在概览里单独提示。',
+          '一条「今天会重置」的公开承诺先记为 announced；等公开帖明确说已经重置，才改为 confirmed。本站不做账号级观测，只记录公开原帖。没有确认的条目会一直保留 announced 标记，并在概览里单独提示。',
         ],
       },
       {
@@ -2474,8 +2474,8 @@ function archiveIndexDocument({ origin, pathname }) {
     tag('h1', {}, esc(label(locale, 'archiveTitle'))),
     tag('p', { class: 'doc-lead' }, esc(label(locale, 'archiveLead'))),
     tag('p', {}, esc(locale === 'en'
-      ? 'A reset announcement and a landed reset are different records: an entry marked pending has been announced but not yet observed. Banked grants are not resets either — they are allowances an account redeems manually. Every month below is a page of its own, and the live overview always carries the most recent one.'
-      : '重置公告和已经生效的重置是两种记录：标记为待确认的条目只代表公告已经发出，还没有观测到生效。备用额度也不算一次重置，它是账号里可以手动使用的一次额度发放。下面每个月都是独立页面，最新一条始终在概览页上。')),
+      ? 'A reset announcement and a landed reset are different records: an entry marked pending has been announced but not yet confirmed by a public post. Banked grants are not resets either — they are allowances an account redeems manually. Every month below is a page of its own, and the live overview always carries the most recent one.'
+      : '重置公告和已经生效的重置是两种记录：标记为待确认的条目只代表公告已经发出，还没有公开帖明确说它落地。备用额度也不算一次重置，它是账号里可以手动使用的一次额度发放。下面每个月的记录都是独立页面，最新一条始终在概览页上。')),
     rows,
     tag('aside', { class: 'doc-related' }, [
       tag('h2', {}, esc(label(locale, 'relatedTitle'))),

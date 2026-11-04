@@ -20,7 +20,7 @@
       "at": "2026-10-28T06:35:38.000Z",    // 我们采用的事件时间：有观测取生效时间，否则取宣布时间
       "announced_at": "2026-10-28T02:42:53.000Z",
       "effective_at": null,                // 有观测到生效时间才填
-      "state": "confirmed" | "announced",   // confirmed = 已落地；announced = 只看到公开承诺
+      "state": "confirmed" | "announced",   // confirmed = 公开帖明确说已落地；announced = 只看到公开承诺
       "quote": "Day 23/ ...",              // 公开原帖摘录（原文语言，英文为主）
       "source_url": "https://x.com/thsottiaux/status/...",
       "evidence": "public"

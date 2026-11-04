@@ -1,8 +1,8 @@
 {
  "schema": 1,
- "updated_at": "2026-11-04T06:00:00Z",
+ "updated_at": "2026-11-04T07:23:42.533Z",
  "timezone": "UTC",
- "note": "自有台账：只收录可追溯公开来源（X 原帖）的重置与备用额度事件。announced_at 为公开宣布时间，at 为观测到生效的时间（无观测时取宣布时间）。",
+ "note": "自有台账：只收录可追溯公开来源（X 原帖）的重置与备用额度事件。confirmed = 公开帖明确说已经落地；announced = 只是预告。announced_at 为公开宣布时间，at 为事件采用时间（有明确落地说明时取该帖时间）。本站不做账号级观测。",
  "events": [
   {
    "date": "2025-09-16",
@@ -867,6 +867,18 @@
    "evidence": "public",
    "id": "r061",
    "kind": "reset"
+  },
+  {
+   "kind": "banked",
+   "at": "2026-11-01T23:27:20.000Z",
+   "announced_at": "2026-11-01T23:27:20.000Z",
+   "effective_at": null,
+   "state": "confirmed",
+   "quote": "Day 28/ Banked 2/2",
+   "source_url": "https://x.com/thsottiaux/status/2117035794678546764",
+   "evidence": "public",
+   "date": "2026-11-01",
+   "id": "b012"
   }
  ]
 }

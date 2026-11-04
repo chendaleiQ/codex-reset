@@ -292,7 +292,7 @@ const DICT = {
       '用本站台账里每次重置之间的间隔做样本，再结合这次已经等了多久，估出 24 和 48 小时内再重置一次的可能性。样本量和可信度就写在数字旁边。',
     'faq.q3': '「已宣布」和「已确认」有什么区别？',
     'faq.a3':
-      '已宣布是公开帖子里提到了重置，但还没观测到生效；已确认是确实落地了。只有已确认的重置会进入概率样本。',
+      '已宣布是公开帖子里提到了重置、但还没落地；已确认是公开帖子明确说已经重置。只有已确认的重置会进入概率样本。本站不做账号级观测，只按公开原帖记录。',
     'faq.q4': '备用额度是什么？',
     'faq.a4':
       '有时额度是发到账上、不是立刻生效。它不是重置，所以单独记录，也不算进概率样本。',
@@ -658,7 +658,7 @@ const DICT = {
       'We use the gaps between past resets in this site’s ledger, combined with how long the current wait already is, to estimate the chance of another reset within 24 and 48 hours. The sample size and confidence sit next to the number.',
     'faq.q3': 'Announced vs confirmed?',
     'faq.a3':
-      'Announced means a public post mentioned a reset but no effective time has been observed; confirmed means it actually landed. Only confirmed resets enter the probability sample.',
+      'Announced means a public post mentioned a reset that has not landed yet; confirmed means a public post explicitly says it landed. Only confirmed resets enter the probability sample. This site does not monitor accounts — it records public posts.',
     'faq.q4': 'What is a banked grant?',
     'faq.a4':
       'Sometimes quota is granted to the account rather than applied immediately. It is not a reset, so it is recorded separately and kept out of the probability sample.',

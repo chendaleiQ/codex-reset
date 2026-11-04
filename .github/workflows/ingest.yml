@@ -1,0 +1,81 @@
+name: Ingest
+
+# Keeps data/ledger.json current from Tibo's public profile page.
+#
+# This is the only workflow that reads a third party. The site itself stays
+# self-contained: it serves whatever data/ contains, and a push here goes
+# through the same deploy pipeline as a hand-written commit.
+#
+# The schedule is enabled after the runner has been proven able to reach X;
+# until then the job runs on demand only.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */2 * * *'
+
+permissions:
+  contents: write
+  actions: write
+  issues: write
+
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 检出
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: true
+
+      - name: Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+
+      - name: 抓取公开帖子并更新台账
+        run: node tools/ingest.js --apply
+
+      - name: 台账与站点检查
+        run: |
+          node tools/check.js
+          npm run check:seo
+
+      - name: 有变化就提交
+        id: commit
+        run: |
+          if git diff --quiet -- data/ledger.json; then
+            echo "台账无变化"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "codex-reset ingest"
+          git config user.email "ingest@users.noreply.github.com"
+          git add data/ledger.json
+          git commit -m "data: ingest public reset posts ($(date -u +%Y-%m-%dT%H:%MZ))"
+          git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      # A push made with GITHUB_TOKEN does not start another workflow, so the
+      # deploy is dispatched explicitly.
+      - name: 触发发布
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --ref main
+
+      - name: 失败时开 issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Ingest 失败：$(date -u +%F)"
+          existing="$(gh issue list --state open --search "$title in:title" --json number --jq 'length' || echo 0)"
+          if [ "$existing" = "0" ]; then
+            gh issue create --title "$title" --body "自动抓取失败，站点数据保持上一次成功抓取的版本。请查看 Actions 日志：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true
+          fi
